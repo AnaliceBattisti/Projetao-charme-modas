@@ -1,0 +1,151 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Autenticação do painel administrativo.
+// Não existia no diagrama ER original (que modela o domínio da loja,
+// não usuários internos) — adicionado aqui porque a tela de Login do
+// painel precisa de algo para autenticar contra.
+model Usuario {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  email     String   @unique
+  senhaHash String
+  papel     PapelUsuario @default(ADMIN)
+  criadoEm  DateTime @default(now())
+}
+
+enum PapelUsuario {
+  ADMIN
+  OPERADOR
+}
+
+model Fornecedor {
+  id           Int    @id @default(autoincrement())
+  nomeRazaoSocial String
+  cnpj         String @unique
+  localizacao  String?
+  categoria    String?
+
+  produtos     Produto[]
+}
+
+model Produto {
+  id            Int      @id @default(autoincrement())
+  fornecedorId  Int
+  nome          String
+  descricao     String?
+  marca         String?
+  categoria     String?
+  precoCusto    Decimal  @db.Decimal(10, 2)
+  precoVenda    Decimal  @db.Decimal(10, 2)
+
+  fornecedor    Fornecedor @relation(fields: [fornecedorId], references: [id])
+  variacoes     Variacao[]
+}
+
+model Variacao {
+  id          Int    @id @default(autoincrement())
+  produtoId   Int
+  cor         String?
+  tamanho     String?
+  sku         String @unique
+
+  produto              Produto @relation(fields: [produtoId], references: [id])
+  movimentacoesEstoque MovimentacaoEstoque[]
+  itensCompra          ItemCompra[]
+}
+
+model MovimentacaoEstoque {
+  id         Int                     @id @default(autoincrement())
+  variacaoId Int
+  tipo       TipoMovimentacaoEstoque
+  quantidade Int
+  data       DateTime                @default(now())
+
+  variacao   Variacao @relation(fields: [variacaoId], references: [id])
+}
+
+enum TipoMovimentacaoEstoque {
+  ENTRADA
+  SAIDA
+}
+
+model Cliente {
+  id           Int     @id @default(autoincrement())
+  nome         String
+  cpf          String  @unique
+  idade        Int?
+  profissao    String?
+  estadoCivil  String?
+  telefone     String?
+
+  crediario    Crediario?
+  compras      Compra[]
+}
+
+model Crediario {
+  id            Int             @id @default(autoincrement())
+  clienteId     Int             @unique
+  limiteCredito Decimal         @db.Decimal(10, 2)
+  status        StatusCrediario @default(ATIVO)
+
+  cliente       Cliente @relation(fields: [clienteId], references: [id])
+}
+
+enum StatusCrediario {
+  ATIVO
+  BLOQUEADO
+}
+
+model Compra {
+  id             Int           @id @default(autoincrement())
+  clienteId      Int
+  data           DateTime      @default(now())
+  valorTotal     Decimal       @db.Decimal(10, 2)
+  formaPagamento String
+  status         StatusCompra  @default(PENDENTE)
+
+  cliente        Cliente      @relation(fields: [clienteId], references: [id])
+  itens          ItemCompra[]
+  parcelas       Parcela[]
+}
+
+enum StatusCompra {
+  PENDENTE
+  CONCLUIDA
+  CANCELADA
+}
+
+model ItemCompra {
+  id            Int     @id @default(autoincrement())
+  compraId      Int
+  variacaoId    Int
+  quantidade    Int
+  precoUnitario Decimal @db.Decimal(10, 2)
+
+  compra        Compra   @relation(fields: [compraId], references: [id])
+  variacao      Variacao @relation(fields: [variacaoId], references: [id])
+}
+
+model Parcela {
+  id             Int           @id @default(autoincrement())
+  compraId       Int
+  numero         Int
+  valor          Decimal       @db.Decimal(10, 2)
+  dataVencimento DateTime
+  status         StatusParcela @default(PENDENTE)
+
+  compra         Compra @relation(fields: [compraId], references: [id])
+}
+
+enum StatusParcela {
+  PENDENTE
+  PAGA
+  ATRASADA
+}

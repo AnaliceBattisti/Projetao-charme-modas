@@ -1,0 +1,147 @@
+:root {
+  --cm-lavender: #e6d6ef;
+  --cm-pink: #eec3da;
+  --cm-plum: #5c2a4d;
+  --cm-plum-light: #8a4d75;
+  --cm-bg: #f8f3fa;
+  --cm-surface: #ffffff;
+  --cm-surface-alt: #f1e4f2;
+  --cm-text: #3d1a34;
+  --cm-text-muted: #8a7292;
+  --cm-border: #e3d0e6;
+  --cm-gradient-soft: linear-gradient(135deg, var(--cm-pink), var(--cm-lavender));
+  --cm-gradient: linear-gradient(135deg, var(--cm-plum), var(--cm-plum-light));
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background: var(--cm-bg);
+  color: var(--cm-text);
+}
+
+a {
+  color: inherit;
+}
+
+.cm-layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100vh;
+}
+
+.cm-sidebar {
+  background: var(--cm-surface);
+  border-right: 1px solid var(--cm-border);
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cm-brand {
+  font-family: "Segoe Script", cursive;
+  font-size: 1.6rem;
+  color: var(--cm-plum);
+  margin: 0 0 4px 4px;
+}
+
+.cm-tagline {
+  margin: 0 0 24px 4px;
+  font-size: 0.8rem;
+  color: var(--cm-text-muted);
+  font-style: italic;
+}
+
+.cm-logo {
+  display: block;
+  width: 96px;
+  height: 96px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+}
+
+.cm-nav-link {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 8px;
+  text-decoration: none;
+  color: var(--cm-text-muted);
+  font-size: 0.95rem;
+}
+
+.cm-nav-link:hover {
+  background: var(--cm-surface-alt);
+  color: var(--cm-plum);
+}
+
+.cm-nav-link.active {
+  background: var(--cm-gradient);
+  color: #fff;
+}
+
+.cm-content {
+  padding: 32px 40px;
+}
+
+.cm-page-title {
+  margin: 0 0 24px 0;
+  font-size: 1.5rem;
+  color: var(--cm-plum);
+}
+
+.cm-card {
+  background: var(--cm-surface);
+  border: 1px solid var(--cm-border);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.cm-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.cm-login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--cm-gradient-soft);
+}
+
+.cm-login-card {
+  background: var(--cm-surface);
+  border: 1px solid var(--cm-border);
+  border-radius: 16px;
+  padding: 40px;
+  width: 320px;
+  text-align: center;
+}
+
+.cm-input {
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--cm-border);
+  background: var(--cm-surface-alt);
+  color: var(--cm-text);
+}
+
+.cm-button {
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 8px;
+  background: var(--cm-gradient);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}

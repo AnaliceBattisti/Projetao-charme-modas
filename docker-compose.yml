@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: charme-modas-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: charme
+      POSTGRES_PASSWORD: charme
+      POSTGRES_DB: charme_modas
+    ports:
+      - "5432:5432"
+    volumes:
+      - charme_modas_pgdata:/var/lib/postgresql/data
+
+volumes:
+  charme_modas_pgdata:
