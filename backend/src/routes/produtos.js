@@ -33,16 +33,53 @@ router.put("/:id", async (req, res) => {
 });
 
 router.delete("/:id", async (req, res) => {
-  await prisma.produto.delete({ where: { id: Number(req.params.id) } });
+  const id = Number(req.params.id);
+  const { _count } = await prisma.produto.findUniqueOrThrow({
+    where: { id },
+    select: { _count: { select: { variacoes: true } } },
+  });
+  if (_count.variacoes > 0) {
+    return res.status(400).json({
+      error: "Este produto tem variações cadastradas. Remova as variações antes de excluir o produto.",
+    });
+  }
+  await prisma.produto.delete({ where: { id } });
   res.status(204).send();
 });
 
 // Variações do produto (cor/tamanho/SKU)
 router.post("/:id/variacoes", async (req, res) => {
+  const { cor, tamanho, sku } = req.body;
+  if (!cor?.trim() || !tamanho?.trim()) {
+    return res.status(400).json({ error: "Preencha cor e tamanho." });
+  }
   const variacao = await prisma.variacao.create({
-    data: { ...req.body, produtoId: Number(req.params.id) },
+    data: { cor, tamanho, sku: sku?.trim() || null, produtoId: Number(req.params.id) },
   });
   res.status(201).json(variacao);
+});
+
+router.delete("/:id/variacoes/:variacaoId", async (req, res) => {
+  const variacaoId = Number(req.params.variacaoId);
+  const variacao = await prisma.variacao.findUniqueOrThrow({
+    where: { id: variacaoId },
+    select: {
+      estoqueAtual: true,
+      _count: { select: { movimentacoesEstoque: true, itensCompra: true } },
+    },
+  });
+  if (variacao.estoqueAtual > 0) {
+    return res.status(400).json({
+      error: `Esta variação tem ${variacao.estoqueAtual} unidade(s) em estoque. Zere o estoque antes de remover.`,
+    });
+  }
+  if (variacao._count.movimentacoesEstoque > 0 || variacao._count.itensCompra > 0) {
+    return res.status(400).json({
+      error: "Esta variação tem histórico de movimentações ou vendas e não pode ser removida.",
+    });
+  }
+  await prisma.variacao.delete({ where: { id: variacaoId } });
+  res.status(204).send();
 });
 
 export default router;

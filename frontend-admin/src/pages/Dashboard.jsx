@@ -8,7 +8,12 @@ const indicadores = [
 export default function Dashboard() {
   return (
     <div>
-      <h1 className="cm-page-title">Dashboard</h1>
+      <div className="cm-page-header">
+        <div>
+          <h1 className="cm-page-title">Dashboard</h1>
+          <p className="cm-page-subtitle">Visão geral da loja: estoque, vendas e crediário.</p>
+        </div>
+      </div>
       <div className="cm-card-grid">
         {indicadores.map((indicador) => (
           <div className="cm-card" key={indicador.label}>

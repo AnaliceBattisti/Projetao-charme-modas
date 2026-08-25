@@ -1,39 +1,67 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { logout } from "../auth.js";
+import {
+  IconDashboard,
+  IconTag,
+  IconBox,
+  IconTruck,
+  IconUsers,
+  IconCard,
+  IconCart,
+  IconLogout,
+} from "../icons.jsx";
 
 const links = [
-  { to: "/", label: "Dashboard", end: true },
-  { to: "/produtos", label: "Produtos" },
-  { to: "/estoque", label: "Estoque" },
-  { to: "/fornecedores", label: "Fornecedores" },
-  { to: "/clientes", label: "Clientes" },
-  { to: "/crediario", label: "Crediário" },
-  { to: "/compras", label: "Compras" },
+  { to: "/", label: "Dashboard", end: true, Icon: IconDashboard },
+  { to: "/produtos", label: "Produtos", Icon: IconTag },
+  { to: "/estoque", label: "Estoque", Icon: IconBox },
+  { to: "/fornecedores", label: "Fornecedores", Icon: IconTruck },
+  { to: "/clientes", label: "Clientes", Icon: IconUsers },
+  { to: "/crediario", label: "Crediário", Icon: IconCard },
+  { to: "/compras", label: "Compras / Vendas", Icon: IconCart },
 ];
 
 export default function Layout() {
+  const navigate = useNavigate();
+
+  function handleLogout() {
+    logout();
+    navigate("/login", { replace: true });
+  }
+
   return (
     <div className="cm-layout">
       <aside className="cm-sidebar">
-        <img
-          className="cm-logo"
-          src="/logo.png"
-          alt="Charme Modas"
-          onError={(e) => {
-            e.currentTarget.style.display = "none";
-          }}
-        />
-        <p className="cm-brand">Charme Modas</p>
-        <p className="cm-tagline">Seu estilo. Seu charme.</p>
-        {links.map((link) => (
-          <NavLink
-            key={link.to}
-            to={link.to}
-            end={link.end}
-            className={({ isActive }) => "cm-nav-link" + (isActive ? " active" : "")}
-          >
-            {link.label}
-          </NavLink>
-        ))}
+        <div className="cm-sidebar-brand">
+          <img
+            className="cm-logo-square"
+            src="/logo.png"
+            alt="Charme Modas"
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
+          />
+          <p className="cm-brand">Charme Modas</p>
+        </div>
+
+        <nav className="cm-sidebar-nav">
+          {links.map(({ to, label, end, Icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={end}
+              className={({ isActive }) => "cm-nav-link" + (isActive ? " active" : "")}
+            >
+              <Icon />
+              {label}
+            </NavLink>
+          ))}
+        </nav>
+
+        <button className="cm-nav-link cm-logout-button" onClick={handleLogout}>
+          <IconLogout />
+          Sair
+        </button>
       </aside>
       <main className="cm-content">
         <Outlet />

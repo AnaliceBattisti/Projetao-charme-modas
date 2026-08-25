@@ -50,11 +50,16 @@ model Produto {
 }
 
 model Variacao {
-  id          Int    @id @default(autoincrement())
-  produtoId   Int
-  cor         String?
-  tamanho     String?
-  sku         String @unique
+  id             Int    @id @default(autoincrement())
+  produtoId      Int
+  cor            String?
+  tamanho        String?
+  sku            String? @unique
+  // Não estava no diagrama original — necessário pro alerta de estoque
+  // baixo/esgotado e pra guardar a quantidade atual sem recalcular
+  // a partir do histórico de movimentações a cada consulta.
+  estoqueMinimo  Int    @default(0)
+  estoqueAtual   Int    @default(0)
 
   produto              Produto @relation(fields: [produtoId], references: [id])
   movimentacoesEstoque MovimentacaoEstoque[]
@@ -66,6 +71,9 @@ model MovimentacaoEstoque {
   variacaoId Int
   tipo       TipoMovimentacaoEstoque
   quantidade Int
+  // Não estava no diagrama original — usado pra descrever a movimentação
+  // (ex.: "Chegada de mercadoria", "Venda #12", "Inventário - item danificado").
+  motivo     String?
   data       DateTime                @default(now())
 
   variacao   Variacao @relation(fields: [variacaoId], references: [id])
@@ -74,6 +82,7 @@ model MovimentacaoEstoque {
 enum TipoMovimentacaoEstoque {
   ENTRADA
   SAIDA
+  AJUSTE
 }
 
 model Cliente {
