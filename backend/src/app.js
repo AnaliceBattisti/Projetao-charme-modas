@@ -7,6 +7,7 @@ import estoqueRouter from "./routes/estoque.js";
 import clientesRouter from "./routes/clientes.js";
 import crediarioRouter from "./routes/crediario.js";
 import comprasRouter from "./routes/compras.js";
+import parcelasRouter from "./routes/parcelas.js";
 
 export const app = express();
 
@@ -21,5 +22,6 @@ app.use("/fornecedores", fornecedoresRouter);
 app.use("/produtos", produtosRouter);
 app.use("/estoque", estoqueRouter);
 app.use("/clientes", clientesRouter);
-app.use("/crediario", crediarioRouter);
+app.use("/crediarios", crediarioRouter);
 app.use("/compras", comprasRouter);
+app.use("/parcelas", parcelasRouter);

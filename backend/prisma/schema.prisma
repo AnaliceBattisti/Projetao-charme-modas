@@ -102,6 +102,7 @@ model Crediario {
   id            Int             @id @default(autoincrement())
   clienteId     Int             @unique
   limiteCredito Decimal         @db.Decimal(10, 2)
+  limiteDisponivel Decimal      @db.Decimal(10,2)
   status        StatusCrediario @default(ATIVO)
 
   cliente       Cliente @relation(fields: [clienteId], references: [id])
@@ -110,6 +111,15 @@ model Crediario {
 enum StatusCrediario {
   ATIVO
   BLOQUEADO
+}
+
+model HistoricoLimiteCrediarioCliente {
+  id            Int             @id @default(autoincrement())
+  clienteId     Int 
+  limiteAnterior Decimal         @db.Decimal(10, 2)
+  limiteFinal Decimal         @db.Decimal(10, 2)
+  motivo     String
+  data       DateTime                @default(now())
 }
 
 model Compra {
