@@ -93,9 +93,27 @@ model Cliente {
   profissao    String?
   estadoCivil  String?
   telefone     String?
+  email        String?
 
   crediario    Crediario?
   compras      Compra[]
+  enderecos    EnderecoCliente[]
+}
+
+model EnderecoCliente {
+  id          Int     @id @default(autoincrement())
+  clienteId   Int
+  cep         String
+  logradouro  String
+  numero      String
+  complemento String?
+  bairro      String
+  cidade      String
+  estado      String
+
+  cliente     Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  @@index([clienteId])
 }
 
 model Crediario {

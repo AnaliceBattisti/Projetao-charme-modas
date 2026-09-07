@@ -23,3 +23,15 @@ app.use("/estoque", estoqueRouter);
 app.use("/clientes", clientesRouter);
 app.use("/crediario", crediarioRouter);
 app.use("/compras", comprasRouter);
+
+app.use((error, req, res, next) => {
+  if (res.headersSent) return next(error);
+  if (error.type === "entity.parse.failed") {
+    return res.status(400).json({ error: "O corpo da requisição deve conter um JSON válido." });
+  }
+  if (error.type === "entity.too.large") {
+    return res.status(413).json({ error: "O corpo da requisição excede o tamanho permitido." });
+  }
+  console.error("Erro ao processar requisição:", error);
+  res.status(500).json({ error: "Erro interno ao processar a solicitação." });
+});
