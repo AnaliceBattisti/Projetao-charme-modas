@@ -62,31 +62,7 @@ router.get("/:id", asyncRoute(async (req, res) => {
   });
   if (!cliente) return res.status(404).json({ error: "Cliente não encontrado." });
   res.json(cliente);
-});
-
-router.post("/", async (req, res) => {
-  const exposicaoCreditoCrediario = Number(process.env.EXPOSICAO_CREDITO_CREDIARIO) || 0;
-
-  const cliente = await prisma.cliente.create({ 
-    data: {
-      ...req.body,
-      compras: {
-        create: []
-      },
-      crediario: {
-        create: {
-          limiteCredito: exposicaoCreditoCrediario,
-          limiteDisponivel: exposicaoCreditoCrediario
-        }
-      }
-    },
-    include:{
-      crediario: true
-    }
-  });
-  res.status(201).json(cliente);
-});
-
+}));
 
 router.get("/:id/compras", asyncRoute(async (req, res) => {
   const cliente = await prisma.cliente.findUnique({
@@ -102,7 +78,20 @@ router.post("/", asyncRoute(async (req, res) => {
   if (await cpfExists(data.cpf)) {
     return res.status(409).json({ error: "Já existe um cliente cadastrado com este CPF." });
   }
-  const cliente = await prisma.cliente.create({ data, include: cadastro });
+  const exposicaoCreditoCrediario = Number(process.env.EXPOSICAO_CREDITO_CREDIARIO) || 0;
+  // Mantém a abertura automática do crediário com os dados de cliente validados.
+  const cliente = await prisma.cliente.create({
+    data: {
+      ...data,
+      crediario: {
+        create: {
+          limiteCredito: exposicaoCreditoCrediario,
+          limiteDisponivel: exposicaoCreditoCrediario,
+        },
+      },
+    },
+    include: cadastro,
+  });
   res.location(`/clientes/${cliente.id}`).status(201).json(cliente);
 }));
 
@@ -158,20 +147,6 @@ router.delete("/:id/enderecos/:enderecoId", asyncRoute(async (req, res) => {
   });
   res.status(204).send();
 }));
-
-router.use((error, req, res, next) => {
-  if (error instanceof ValidationError) return res.status(400).json({ error: error.message });
-  if (error.code === "P2002") {
-    return res.status(409).json({ error: "Já existe um cliente cadastrado com este CPF." });
-  }
-  if (error.code === "P2025") {
-    return res.status(404).json({ error: "Cliente ou endereço não encontrado." });
-  }
-  if (error.code === "P2003" && req.method === "DELETE") {
-    return res.status(409).json({ error: "Cliente possui compras ou crediário vinculados e não pode ser excluído." });
-  }
-  next(error);
-});
 
 router.get('/:id/debitos', async (req, res) => {
   try {
@@ -251,6 +226,21 @@ router.get('/:id/debitos', async (req, res) => {
     console.error('Erro ao buscar débitos do cliente:', error);
     return res.status(500).json({ erro: 'Erro interno ao consultar débitos.' });
   }
+});
+
+// Inclui também os erros de validação de parâmetros da rota de débitos.
+router.use((error, req, res, next) => {
+  if (error instanceof ValidationError) return res.status(400).json({ error: error.message });
+  if (error.code === "P2002") {
+    return res.status(409).json({ error: "Já existe um cliente cadastrado com este CPF." });
+  }
+  if (error.code === "P2025") {
+    return res.status(404).json({ error: "Cliente ou endereço não encontrado." });
+  }
+  if (error.code === "P2003" && req.method === "DELETE") {
+    return res.status(409).json({ error: "Cliente possui compras ou crediário vinculados e não pode ser excluído." });
+  }
+  next(error);
 });
 
 export default router;

@@ -12,6 +12,7 @@ erDiagram
     VARIACAO ||--o{ ITEM_COMPRA : "e vendida em"
     CLIENTE ||--o| CREDIARIO : possui
     CLIENTE ||--o{ COMPRA : realiza
+    CLIENTE ||--o{ ENDERECO_CLIENTE : possui
     COMPRA ||--o{ ITEM_COMPRA : contem
     COMPRA ||--o{ PARCELA : "gera se crediario"
 
@@ -52,11 +53,23 @@ erDiagram
     CLIENTE {
         int id PK
         string nome
-        string cpf
-        int idade
-        string profissao
-        string estadoCivil
-        string telefone
+        string cpf UK
+        int idade "opcional"
+        string profissao "opcional"
+        string estadoCivil "opcional"
+        string telefone "opcional"
+        string email "opcional"
+    }
+    ENDERECO_CLIENTE {
+        int id PK
+        int clienteId FK
+        string cep
+        string logradouro
+        string numero
+        string complemento "opcional"
+        string bairro
+        string cidade
+        string estado
     }
     CREDIARIO {
         int id PK
@@ -95,8 +108,9 @@ A tabela `Usuario` (autenticação do painel) fica de fora do diagrama acima de 
 - **Produto → Variação**: 1:N. Cada combinação de cor/tamanho de um produto é uma variação própria, com seu próprio estoque e SKU.
 - **Variação → MovimentacaoEstoque**: 1:N. Toda entrada, saída ou ajuste de estoque fica registrado por variação.
 - **Variação → ItemCompra**: 1:N. Uma variação pode aparecer em vários itens de compra ao longo do tempo.
-- **Cliente → Crediario**: 1:1. Cada cliente tem no máximo um crediário.
+- **Cliente → Crediario**: 1:0..1 no banco, com `Crediario.clienteId` único. O cadastro pela API cria um crediário automaticamente; clientes antigos podem continuar sem ele.
 - **Cliente → Compra**: 1:N.
+- **Cliente → EnderecoCliente**: 1:N. Um cliente pode ter zero ou mais endereços de entrega; cada endereço pertence a um único cliente.
 - **Compra → ItemCompra**: 1:N (os itens da compra).
 - **Compra → Parcela**: 1:N, só populado quando a forma de pagamento é crediário.
 
@@ -147,15 +161,43 @@ A tabela `Usuario` (autenticação do painel) fica de fora do diagrama acima de 
 | data | DateTime | default now() |
 
 ### Cliente
+
 | Campo | Tipo | Observação |
 |---|---|---|
-| id | Int (PK) | |
-| nome | String | |
-| cpf | String | único |
-| idade | Int? | |
-| profissao | String? | |
-| estadoCivil | String? | |
-| telefone | String? | |
+| id | Int (PK) | autoincremento |
+| nome | String | obrigatório; a API remove espaços nas extremidades e aceita até 150 caracteres |
+| cpf | String | único; a API valida os dígitos verificadores e salva os 11 dígitos sem máscara |
+| idade | Int? | opcional; a API aceita inteiro de 0 a 130 ou `null` |
+| profissao | String? | opcional; texto livre de até 150 caracteres na API |
+| estadoCivil | String? | opcional; texto livre de até 150 caracteres na API |
+| telefone | String? | opcional; a API salva DDD e número, com 10 ou 11 dígitos, sem máscara nem prefixo `+55` |
+| email | String? | opcional e não único; a API valida o formato, aceita até 254 caracteres e salva em minúsculas |
+
+As regras de formato, tamanho e faixa acima são aplicadas pela API. O banco garante os tipos, a nulabilidade, a chave primária e a unicidade de `cpf`. Cadastros antigos com CPF mascarado continuam sendo reconhecidos nas verificações de duplicidade; a migração de e-mail e endereços não reescreve esses CPFs.
+
+As relações no Prisma são `crediario: Crediario?`, `compras: Compra[]` e `enderecos: EnderecoCliente[]`. `POST /clientes` cria cliente, endereços opcionais e crediário em uma única operação atômica. O crediário inicia com status `ATIVO` e os campos `limiteCredito` e `limiteDisponivel` iguais ao valor de `EXPOSICAO_CREDITO_CREDIARIO`, usando zero quando a variável está ausente. Essa criação é feita pela API; a relação opcional no schema permite manter clientes antigos sem crediário.
+
+`PUT /clientes/:id` preserva os campos omitidos e não altera compras nem crediário. A API só permite excluir clientes sem compras e sem crediário vinculados; as chaves estrangeiras dessas tabelas impedem a exclusão e a resposta é `409`. Quando não há esses vínculos, a exclusão retorna `204` e os endereços são removidos em cascata. Isso também significa que um cliente novo, que já recebe crediário, não pode ser excluído mesmo sem compras ou dívida pendente.
+
+### EnderecoCliente
+
+Endereços de entrega vinculados ao cadastro, adicionados junto com o e-mail para atender ao escopo de clientes.
+
+| Campo | Tipo | Observação |
+|---|---|---|
+| id | Int (PK) | autoincremento |
+| clienteId | Int (FK) | obrigatório; referencia `Cliente.id` e possui índice não único |
+| cep | String | obrigatório; a API aceita máscara e salva 8 dígitos |
+| logradouro | String | obrigatório; até 150 caracteres na API |
+| numero | String | obrigatório; até 20 caracteres na API, permitindo valores como `s/n` |
+| complemento | String? | opcional; até 150 caracteres na API |
+| bairro | String | obrigatório; até 150 caracteres na API |
+| cidade | String | obrigatório; até 150 caracteres na API |
+| estado | String | obrigatório; a API valida a UF brasileira e salva em maiúsculas |
+
+A chave estrangeira usa `ON DELETE CASCADE` e `ON UPDATE CASCADE`. O índice `EnderecoCliente_clienteId_idx` atende às consultas de endereços por cliente. Nas rotas de edição e exclusão, a API confere `id` e `clienteId` juntos, impedindo alterar ou remover o endereço de outro cliente. O corpo da requisição não permite transferir um endereço para outro cadastro.
+
+O cadastro inicial aceita até 20 endereços na mesma requisição; esse limite pertence à validação do `POST /clientes`, não é uma restrição de quantidade total no banco. Endereços também podem ser adicionados individualmente em `/clientes/:id/enderecos`. Veja os contratos em [CLIENTES.md](./CLIENTES.md).
 
 ### Crediario
 | Campo | Tipo | Observação |
@@ -215,6 +257,9 @@ Essa tabela não faz parte do domínio da loja (o diagrama ER da equipe modela p
 | `Variacao.estoqueMinimo` e `estoqueAtual` adicionados | Necessários pro alerta de estoque baixo/esgotado na tela de Estoque |
 | `MovimentacaoEstoque.motivo` adicionado | Descrever a movimentação (chegada de mercadoria, venda, ajuste de inventário) |
 | `TipoMovimentacaoEstoque` ganhou o valor `AJUSTE` | Além de entrada/saída, precisava de um tipo pra correções manuais (perda, inventário) |
+| `Cliente.email` adicionado como opcional | Complementa o contato do cliente previsto no escopo, preservando cadastros existentes |
+| Tabela `EnderecoCliente` adicionada | Permite múltiplos endereços de entrega por cliente, com exclusão em cascata quando o cadastro pode ser removido |
+| Relação `Cliente → Crediario` opcional no schema | Mantém clientes antigos sem crediário; novos cadastros pela API criam o crediário automaticamente |
 
 ## Migrations
 
@@ -223,5 +268,7 @@ Histórico em `backend/prisma/migrations/`:
 1. **`20260814021309_init`** — schema inicial, traduzido direto do diagrama ER da equipe (todas as tabelas originais + `Usuario`).
 2. **`20260825014834_estoque_minimo_atual_motivo`** — adiciona `estoqueMinimo`/`estoqueAtual` em Variação, `motivo` em MovimentacaoEstoque, e o tipo `AJUSTE`.
 3. **`20260825021818_sku_opcional`** — torna `Variacao.sku` opcional.
+
+Para o cadastro de clientes, a migração **`20260907143000_clientes_email_enderecos`** adiciona `Cliente.email` como coluna opcional e cria `EnderecoCliente`, com índice em `clienteId` e chave estrangeira em cascata. Os clientes existentes são preservados, inicialmente com e-mail nulo e sem endereços; essa migração não cria crediários para eles. O cadastro integrado também depende das migrations do módulo de crediário que constam no diretório, incluindo a que adiciona `limiteDisponivel`.
 
 Pra aplicar as migrations num banco novo: `npx prisma migrate dev` (ver `README.md` na raiz). Pra alterar o schema, sempre editar `schema.prisma` e rodar `npx prisma migrate dev --name <descricao>` — nunca alterar o banco diretamente.
