@@ -1,0 +1,844 @@
+type: collection.insomnia.rest/5.0
+schema_version: "5.1"
+name: Charme Modas
+meta:
+  id: wrk_2081ad6e51204cfba9c1c4ebafd2ae36
+  created: 1787704263259
+  modified: 1787704263259
+  description: ""
+collection:
+  - name: Clientes
+    meta:
+      id: fld_ba8e6af2b60b42e48a1cc0166bf7f22b
+      created: 1787704292457
+      modified: 1787704292457
+      sortKey: -1787704292457
+      description: ""
+    children:
+      - url: http://localhost:3333/clientes/:id
+        name: Buscar Cliente
+        meta:
+          id: req_9448d5eb755c4bfdb9cc67bcc17d9361
+          created: 1787704276624
+          modified: 1788030722393
+          isPrivate: false
+          description: ""
+          sortKey: -1787704296389
+        method: GET
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+        pathParameters:
+          - name: id
+            value: "1"
+      - url: http://localhost:3333/clientes
+        name: Buscar Todos Clientes
+        meta:
+          id: req_1fc0d8bbb1b7406881e16086e0550eee
+          created: 1787704562813
+          modified: 1787790013936
+          isPrivate: false
+          description: ""
+          sortKey: -1780044616017
+        method: GET
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:3333/clientes/:id
+        name: Remover Cliente
+        meta:
+          id: req_adab7eabe0e64891960496fab40455a3
+          created: 1787704579932
+          modified: 1787704585517
+          isPrivate: false
+          description: ""
+          sortKey: -1783874456203
+        method: DELETE
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+        pathParameters:
+          - name: id
+            value: "1"
+      - url: http://localhost:3333/clientes
+        name: Criar Cliente
+        meta:
+          id: req_f801158ce3574bfb9ecc353317f68d7d
+          created: 1787704626919
+          modified: 1787704838019
+          isPrivate: false
+          description: ""
+          sortKey: -1785789376296
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "nome": "João da Silva",
+              "cpf": "12345678901",
+              "idade": 35,
+              "profissao": "Desenvolvedor de Software",
+              "estadoCivil": "Casado",
+              "telefone": "83999998888"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:3333/clientes/:id
+        name: Atualizar Cliente
+        meta:
+          id: req_9213b5e68cbf4bd193e858ba45c0f61f
+          created: 1787704933172
+          modified: 1787705008895
+          isPrivate: false
+          description: ""
+          sortKey: -1784831916249.5
+        method: PUT
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "nome": "João 2",
+              "cpf": "10987654321",
+              "idade": 50,
+              "profissao": "Vendedor",
+              "estadoCivil": "Solteiro",
+              "telefone": "85999999999"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+        pathParameters:
+          - name: id
+            value: "1"
+  - name: Fornecedor
+    meta:
+      id: fld_b05825a6d94940e6817fc61d655a6ae8
+      created: 1787711994711
+      modified: 1787711994711
+      sortKey: -1744114546228.5
+      description: ""
+    children:
+      - url: http://localhost:3333/fornecedores/:id
+        name: Buscar Fornecedor
+        meta:
+          id: req_952d3bc6924a4a2b86b5a04b4029ee94
+          created: 1787711994711
+          modified: 1787787624585
+          isPrivate: false
+          description: ""
+          sortKey: -1787704296389
+        method: GET
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+        pathParameters:
+          - name: id
+            value: "1"
+      - url: http://localhost:3333/fornecedores
+        name: Criar Fornecedor
+        meta:
+          id: req_95555b583364433d80e25b742ea7b45d
+          created: 1787711994711
+          modified: 1787787594508
+          isPrivate: false
+          description: ""
+          sortKey: -1785789376296
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "nomeRazaoSocial": "Lojas 10",
+              "cnpj": "45281612000138",
+              "localizacao": "Rua X, centro. Toritama-PE.",
+              "categoria": "Calças"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:3333/fornecedores/:id
+        name: Remover Fornecedores
+        meta:
+          id: req_ac9f83a063a7456eaa3c68b27c36076a
+          created: 1787711994711
+          modified: 1787787649614
+          isPrivate: false
+          description: ""
+          sortKey: -1783874456203
+        method: DELETE
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+        pathParameters:
+          - name: id
+            value: "1"
+      - url: http://localhost:3333/fornecedores/:id
+        name: Atualizar Fornecedores
+        meta:
+          id: req_be612aabbb4c4b7abb40279a21caadb3
+          created: 1787711994711
+          modified: 1787787647008
+          isPrivate: false
+          description: ""
+          sortKey: -1784831916249.5
+        method: PUT
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "nomeRazaoSocial": "Lojas 10",
+              "cnpj": "45281612000138",
+              "localizacao": "Rua X, centro. Toritama-PE.",
+              "categoria": "Calças"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+        pathParameters:
+          - name: id
+            value: "1"
+      - url: http://localhost:3333/fornecedores
+        name: Buscar Todos Fornecedores
+        meta:
+          id: req_c10507bb77cb49e68c64659de93c1382
+          created: 1787711994711
+          modified: 1787787469424
+          isPrivate: false
+          description: ""
+          sortKey: -1780044616017
+        method: GET
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+  - name: Produtos
+    meta:
+      id: fld_b6c226d9da994a179692e0ab26ae8b08
+      created: 1787787709209
+      modified: 1787787709209
+      sortKey: -1722319673114.25
+      description: ""
+    children:
+      - url: http://localhost:3333/produtos
+        name: Buscar Todos Produtos
+        meta:
+          id: req_3bb3466672054771966214fbbff87ed7
+          created: 1787787709209
+          modified: 1787788664351
+          isPrivate: false
+          description: ""
+          sortKey: -1780044616017
+        method: GET
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:3333/produtos/:id
+        name: Atualizar Produto
+        meta:
+          id: req_42e24237c6394d23b3f8827bbc276198
+          created: 1787787709209
+          modified: 1787787993216
+          isPrivate: false
+          description: ""
+          sortKey: -1784831916249.5
+        method: PUT
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "nome": "Calça Jeans",
+              "descricao": "Calça Jeans",
+            	"marca": "Renner",
+            	"categoria": "calças",
+              "precoCusto": 150.15,
+              "precoVenda": 160.00
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+        pathParameters:
+          - name: id
+            value: "1"
+      - url: http://localhost:3333/produtos/:id
+        name: Buscar Produto
+        meta:
+          id: req_44d24189473d40e8860e9f20a0b617f4
+          created: 1787787709209
+          modified: 1787787743051
+          isPrivate: false
+          description: ""
+          sortKey: -1787704296389
+        method: GET
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+        pathParameters:
+          - name: id
+            value: "1"
+      - url: http://localhost:3333/produtos
+        name: Criar Produto
+        meta:
+          id: req_703658371f57476781edcf679983b28f
+          created: 1787787709209
+          modified: 1788038221905
+          isPrivate: false
+          description: ""
+          sortKey: -1785789376296
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "nome": "Calça Jeans",
+              "descricao": "Calça Jeans",
+            	"marca": "Renner",
+            	"categoria": "calças",
+              "precoCusto": 150.15,
+              "precoVenda": 160.00,
+            	"fornecedorId": 1
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:3333/produtos/:id
+        name: Remover Produto
+        meta:
+          id: req_b219966745f94ad8956c71b320a5c791
+          created: 1787787709209
+          modified: 1787787750809
+          isPrivate: false
+          description: ""
+          sortKey: -1783874456203
+        method: DELETE
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+        pathParameters:
+          - name: id
+            value: "1"
+      - url: http://localhost:3333/produtos/:id/variacoes
+        name: Adicionar Variação de Produto
+        meta:
+          id: req_8bda5550b47d45e4a41e638ad50568f4
+          created: 1787788652327
+          modified: 1788038267972
+          isPrivate: false
+          description: ""
+          sortKey: -1780044615917
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "cor": "Cinza",
+              "tamanho": "Tamanho 42",
+            	"sku": "cdac16e7-ce9b-4aae-904b-eb939f922838"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+        pathParameters:
+          - name: id
+            value: "2"
+      - url: http://localhost:3333/produtos/:id/variacoes/:variacaoId
+        name: Remover Variação de Produto
+        meta:
+          id: req_4b5300a5b2fc4f679eec6659e2024070
+          created: 1787788968101
+          modified: 1787789001001
+          isPrivate: false
+          description: ""
+          sortKey: -1776214775781
+        method: DELETE
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+        pathParameters:
+          - name: id
+            value: "1"
+          - name: variacaoId
+            value: "1"
+  - name: Estoque
+    meta:
+      id: fld_de718218944f45cbbde73127a17b6a36
+      created: 1787788332757
+      modified: 1787788332757
+      sortKey: -1787788332757
+      description: ""
+    children:
+      - url: http://localhost:3333/estoque
+        name: Listar Estoque de todos os produtos
+        meta:
+          id: req_802698bd6c0447fab647af434deb0202
+          created: 1787788337324
+          modified: 1787789481028
+          isPrivate: false
+          description: ""
+          sortKey: -1787788337324
+        method: GET
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:3333/estoque/variacao/:id
+        name: Listar Estoque por variação
+        meta:
+          id: req_078bbc74ca7a4f42b35c45b8ac5deef2
+          created: 1787788425035
+          modified: 1787789588529
+          isPrivate: false
+          description: ""
+          sortKey: -1787788425035
+        method: GET
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+        pathParameters:
+          - name: id
+            value: "2"
+      - url: http://localhost:3333/estoque/movimentacoes
+        name: Histórico de Movimentações do estoque
+        meta:
+          id: req_8dde50bc07f4473a94a2ee0111439e4a
+          created: 1787788479076
+          modified: 1787788506983
+          isPrivate: false
+          description: ""
+          sortKey: -1787788479076
+        method: GET
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:3333/estoque/movimentacoes
+        name: Realização movimentação no estoque
+        meta:
+          id: req_1732d7a9ef0e4286ada85c3dacf52b48
+          created: 1787789332530
+          modified: 1787789485647
+          isPrivate: false
+          description: ""
+          sortKey: -1787788337224
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "variacaoId": 2,
+              "tipo": "ENTRADA",
+            	"quantidade": 5,
+            	"motivo": "Chegada de mercadoria"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+  - name: Compras
+    meta:
+      id: fld_8f2e79b21d3441548ede84e91cf9d6d9
+      created: 1787789993979
+      modified: 1787789993979
+      sortKey: -1787789993979
+      description: ""
+    children:
+      - url: http://localhost:3333/compras
+        name: Listar todas as compras
+        meta:
+          id: req_d9b098e608ee4225ab1f9aaa36aafc8a
+          created: 1787789998495
+          modified: 1787790046939
+          isPrivate: false
+          description: ""
+          sortKey: -1787789998495
+        method: GET
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:3333/compras/:id
+        name: Buscar Compra
+        meta:
+          id: req_cd4413a034154970b8ebec9eee983c8d
+          created: 1787790032467
+          modified: 1788023569046
+          isPrivate: false
+          description: ""
+          sortKey: -1787790032467
+        method: GET
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+        pathParameters:
+          - name: id
+            value: "4"
+      - url: http://localhost:3333/compras
+        name: Nova compra
+        meta:
+          id: req_f404139c47c84d63aea2262b6dff769d
+          created: 1787790071170
+          modified: 1788028208607
+          isPrivate: false
+          description: ""
+          sortKey: -1787790071170
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "clienteId": 1,
+              "formaPagamento": "Crediario",
+            	"data": "2026-08-26T21:24:00Z",
+            	"numeroParcelas": 3,
+              "itens":[
+            		{
+            			"variacaoId": 2,
+            			"quantidade": 5,
+            			"precoUnitario": 10.00
+            		}
+            	]
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+  - name: Parcelas
+    meta:
+      id: fld_c34a0e4a23b64580a55b4c10a2d572dc
+      created: 1788028189895
+      modified: 1788028189895
+      sortKey: -1788028189895
+      description: ""
+    children:
+      - url: http://localhost:3333/parcelas
+        name: Listar todas as parcelas
+        meta:
+          id: req_184f84232a8543aaa748d4e4742f4e43
+          created: 1788028202613
+          modified: 1788040372505
+          isPrivate: false
+          description: ""
+          sortKey: -1788028202613
+        method: GET
+        parameters:
+          - name: status
+            value: PENDENTE
+            description: ""
+            disabled: true
+          - name: dataInicio
+            value: 2026-09-29T00:00:00.00Z
+            description: ""
+            disabled: true
+          - name: dataFim
+            value: 2026-10-30
+            description: ""
+            disabled: true
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:3333/clientes/:id/debitos
+        name: Informações de débito do Cliente
+        meta:
+          id: req_79efa7976b67458fba08a4244ff72513
+          created: 1788030705456
+          modified: 1788040708469
+          isPrivate: false
+          description: ""
+          sortKey: -1788030705456
+        method: GET
+        parameters:
+          - name: dias
+            value: "95"
+            description: ""
+            disabled: false
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+        pathParameters:
+          - name: id
+            value: "1"
+      - url: http://localhost:3333/parcelas/baixa/:id
+        name: Dar baixa em parcela
+        meta:
+          id: req_a4657e0464eb4f428a12c59acfc22bd6
+          created: 1788037108545
+          modified: 1788040642452
+          isPrivate: false
+          description: ""
+          sortKey: -1788037108545
+        method: PUT
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+        pathParameters:
+          - name: id
+            value: "3"
+  - name: Crediario
+    meta:
+      id: fld_1ea7c506cec247378a1a5fa33dacd062
+      created: 1788032464531
+      modified: 1788032464531
+      sortKey: -1788032464531
+      description: ""
+    children:
+      - url: http://localhost:3333/crediarios
+        name: Listar Crediarios
+        meta:
+          id: req_b16fd513d98445a1bbd6c18d98833650
+          created: 1788032473163
+          modified: 1788032601219
+          isPrivate: false
+          description: ""
+          sortKey: -1788032473163
+        method: GET
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:3333/crediarios/cliente/:id
+        name: Buscar Crediario Por Cliente
+        meta:
+          id: req_daf2c2508b9746c5a80b245170e703de
+          created: 1788032595206
+          modified: 1788032639441
+          isPrivate: false
+          description: ""
+          sortKey: -1788032595206
+        method: GET
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+        pathParameters:
+          - name: id
+            value: "1"
+      - url: http://localhost:3333/crediarios/:id/bloqueio/:bloquear
+        name: Bloquear Crediario
+        meta:
+          id: req_32be57ee42134f20bb2e2de06ece1eca
+          created: 1788032634667
+          modified: 1788035611166
+          isPrivate: false
+          description: ""
+          sortKey: -1788032634667
+        method: POST
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+        pathParameters:
+          - name: id
+            value: "2"
+          - name: bloquear
+            value: "true"
+      - url: http://localhost:3333/crediarios/:id/limite
+        name: Alterar limite de crediário
+        meta:
+          id: req_627c2dab8a224e70ab4ab56054be9296
+          created: 1788035599406
+          modified: 1788040327382
+          isPrivate: false
+          description: ""
+          sortKey: -1788035599406
+        method: POST
+        parameters:
+          - name: valorLimite
+            value: "70"
+            description: ""
+            disabled: false
+          - name: motivo
+            value: Teste
+            description: ""
+            disabled: false
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+        pathParameters:
+          - name: id
+            value: "1"
+cookieJar:
+  name: Default Jar
+  meta:
+    id: jar_41a22550d821edf750f7f162e643d3b463fe7c32
+    created: 1787704263264
+    modified: 1787704263264
+environments:
+  name: Base Environment
+  meta:
+    id: env_41a22550d821edf750f7f162e643d3b463fe7c32
+    created: 1787704263262
+    modified: 1787704263262
+    isPrivate: false
