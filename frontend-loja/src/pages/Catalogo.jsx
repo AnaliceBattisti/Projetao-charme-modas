@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import ProdutoCard from "../components/ProdutoCard.jsx";
-import { categoriasDe, coresDe, tamanhosDe, useProdutos } from "../produtos.js";
+import { categoriasDe, coresDe, ehNovidade, tamanhosDe, useProdutos } from "../produtos.js";
 import { formatarPreco } from "../format.js";
 
 export default function Catalogo() {
@@ -11,6 +11,8 @@ export default function Catalogo() {
   const [cor, setCor] = useState(null);
 
   const categoriaDaUrl = parametros.get("categoria");
+  const buscaDaUrl = (parametros.get("busca") ?? "").trim();
+  const soNovidades = parametros.get("novidades") === "1";
   const categorias = categoriasDe(produtos);
   const tamanhos = tamanhosDe(produtos);
   const cores = coresDe(produtos);
@@ -21,18 +23,35 @@ export default function Catalogo() {
     : { min: 0, max: 0 };
 
   const filtrados = useMemo(() => {
-    return produtos.filter((produto) => {
+    const termo = buscaDaUrl.toLowerCase();
+    const lista = produtos.filter((produto) => {
       if (categoriaDaUrl && produto.categoria !== categoriaDaUrl) return false;
       if (tamanho && !produto.variacoes.some((v) => v.tamanho === tamanho)) return false;
       if (cor && !produto.variacoes.some((v) => v.cor === cor)) return false;
+      if (soNovidades && !ehNovidade(produto)) return false;
+      if (termo) {
+        const texto = [produto.nome, produto.marca, produto.categoria, produto.descricao]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        if (!texto.includes(termo)) return false;
+      }
       return true;
     });
-  }, [produtos, categoriaDaUrl, tamanho, cor]);
+    // A API já devolve do mais novo pro mais antigo; em Novidades isso é o que importa.
+    return lista;
+  }, [produtos, categoriaDaUrl, tamanho, cor, buscaDaUrl, soNovidades]);
 
   function selecionarCategoria(valor) {
     const novos = new URLSearchParams(parametros);
     if (valor) novos.set("categoria", valor);
     else novos.delete("categoria");
+    setParametros(novos);
+  }
+
+  function removerParametro(nome) {
+    const novos = new URLSearchParams(parametros);
+    novos.delete(nome);
     setParametros(novos);
   }
 
@@ -44,10 +63,35 @@ export default function Catalogo() {
 
   return (
     <div className="cm-pagina">
-      <h1 className="cm-titulo-pagina">Catálogo</h1>
-      <p className="cm-subtitulo-pagina">Encontre a peça perfeita para você.</p>
+      <h1 className="cm-titulo-pagina">{soNovidades ? "Novidades" : "Catálogo"}</h1>
+      <p className="cm-subtitulo-pagina">
+        {soNovidades
+          ? "As peças que chegaram por último na loja."
+          : "Encontre a peça perfeita para você."}
+      </p>
 
       {erro && <p className="cm-erro">{erro}</p>}
+
+      {(buscaDaUrl || soNovidades) && (
+        <div className="cm-filtros-ativos">
+          {buscaDaUrl && (
+            <span className="cm-chip">
+              Buscando por “{buscaDaUrl}”
+              <button onClick={() => removerParametro("busca")} aria-label="Limpar busca">
+                ×
+              </button>
+            </span>
+          )}
+          {soNovidades && (
+            <span className="cm-chip">
+              Só novidades
+              <button onClick={() => removerParametro("novidades")} aria-label="Remover filtro">
+                ×
+              </button>
+            </span>
+          )}
+        </div>
+      )}
 
       <div className="cm-catalogo">
         <aside className="cm-filtros">
