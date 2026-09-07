@@ -7,14 +7,14 @@ async function request(path, options, { rawBody = false } = {}) {
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `Erro ${res.status} em ${path}`);
+    throw new Error(body.error || body.erro || `Erro ${res.status} em ${path}`);
   }
   if (res.status === 204) return null;
   return res.json();
 }
 
 export const api = {
-  get: (path) => request(path),
+  get: (path, options) => request(path, options),
   post: (path, data) => request(path, { method: "POST", body: JSON.stringify(data) }),
   put: (path, data) => request(path, { method: "PUT", body: JSON.stringify(data) }),
   del: (path) => request(path, { method: "DELETE" }),
