@@ -214,7 +214,7 @@ test("detalha histórico com itens, produtos, parcelas e crediário; protege ví
   const detail = await request(`/clientes/${cliente.id}`);
   assert.equal(detail.data.crediario.status, "ATIVO");
   assert.deepEqual((await request(`/clientes/${cliente.id}`)).data.compras, history.data);
-  // Compra quitada também preserva o cadastro, mas com mensagem diferente da dívida em aberto.
+  
   await prisma.parcela.updateMany({ where: { compraId: compra.id }, data: { status: "PAGA" } });
   const quitado = await request(`/clientes/${cliente.id}`, { method: "DELETE" });
   assert.equal(quitado.status, 409);
@@ -242,7 +242,7 @@ test("exclui cliente sem compras junto com o crediário automático e os endere�
 });
 
 test("exclui cadastro legado sem crediário ou compras e seus endereços", async () => {
-  // Cadastros anteriores à abertura automática ainda podem não possuir crediário.
+  
   const cliente = await prisma.cliente.create({ data: {
     nome: "Cliente legado", cpf: nextCpf(), enderecos: { create: endereco },
   } });

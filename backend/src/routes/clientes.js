@@ -25,7 +25,6 @@ for (const parameter of ["id", "enderecoId"]) {
 }
 
 async function cpfExists(cpf, id) {
-  // Também reconhece cadastros antigos que armazenaram a máscara do CPF.
   return prisma.cliente.findFirst({
     where: { cpf: { in: cpfFormats(cpf) }, ...(id ? { id: { not: id } } : {}) },
     select: { id: true },
@@ -78,7 +77,7 @@ router.post("/", asyncRoute(async (req, res) => {
   if (await cpfExists(data.cpf)) {
     return res.status(409).json({ error: "Já existe um cliente cadastrado com este CPF." });
   }
-  // Todo cadastro nasce com crediário; o limite inicial vem de EXPOSICAO_CREDITO_CREDIARIO.
+
   const limiteInicial = Number(process.env.EXPOSICAO_CREDITO_CREDIARIO) || 0;
   const cliente = await prisma.cliente.create({
     data: {
@@ -112,14 +111,11 @@ router.delete("/:id", asyncRoute(async (req, res) => {
   if (parcelasEmAberto > 0) {
     return res.status(409).json({ error: "Cliente possui parcelas em aberto e não pode ser excluído." });
   }
-  // Mesmo quitadas, as compras são histórico de vendas (e as movimentações de estoque
-  // apontam para os itens delas), então o cadastro fica preservado.
+  
   if (await prisma.compra.count({ where: { clienteId: id } })) {
     return res.status(409).json({ error: "Cliente possui compras registradas e não pode ser excluído." });
   }
-  // Sem compras, o crediário é uma linha de crédito sem uso e sai junto com o cadastro.
-  // Endereços são removidos pelo ON DELETE CASCADE. O delete do cliente ainda lança
-  // P2025 (404) se o cadastro não existir, e a transação desfaz o deleteMany.
+ 
   await prisma.$transaction([
     prisma.crediario.deleteMany({ where: { clienteId: id } }),
     prisma.cliente.delete({ where: { id } }),
@@ -138,7 +134,6 @@ router.get("/:id/enderecos", asyncRoute(async (req, res) => {
 
 router.post("/:id/enderecos", asyncRoute(async (req, res) => {
   const data = validateEndereco(req.body);
-  // O connect mantém a criação atômica e retorna P2025 se o cliente não existe.
   const endereco = await prisma.enderecoCliente.create({
     data: { ...data, cliente: { connect: { id: req.params.id } } },
   });
