@@ -64,30 +64,6 @@ router.get("/:id", asyncRoute(async (req, res) => {
   res.json(cliente);
 }));
 
-router.post("/", async (req, res) => {
-  const exposicaoCreditoCrediario = Number(process.env.EXPOSICAO_CREDITO_CREDIARIO) || 0;
-
-  const cliente = await prisma.cliente.create({ 
-    data: {
-      ...req.body,
-      compras: {
-        create: []
-      },
-      crediario: {
-        create: {
-          limiteCredito: exposicaoCreditoCrediario,
-          limiteDisponivel: exposicaoCreditoCrediario
-        }
-      }
-    },
-    include:{
-      crediario: true
-    }
-  });
-  res.status(201).json(cliente);
-});
-
-
 router.get("/:id/compras", asyncRoute(async (req, res) => {
   const cliente = await prisma.cliente.findUnique({
     where: { id: req.params.id },
@@ -102,7 +78,15 @@ router.post("/", asyncRoute(async (req, res) => {
   if (await cpfExists(data.cpf)) {
     return res.status(409).json({ error: "Já existe um cliente cadastrado com este CPF." });
   }
-  const cliente = await prisma.cliente.create({ data, include: cadastro });
+  // Todo cadastro nasce com crediário; o limite inicial vem de EXPOSICAO_CREDITO_CREDIARIO.
+  const limiteInicial = Number(process.env.EXPOSICAO_CREDITO_CREDIARIO) || 0;
+  const cliente = await prisma.cliente.create({
+    data: {
+      ...data,
+      crediario: { create: { limiteCredito: limiteInicial, limiteDisponivel: limiteInicial } },
+    },
+    include: cadastro,
+  });
   res.location(`/clientes/${cliente.id}`).status(201).json(cliente);
 }));
 
@@ -120,9 +104,26 @@ router.put("/:id", asyncRoute(async (req, res) => {
 }));
 
 router.delete("/:id", asyncRoute(async (req, res) => {
-  // As FKs impedem a exclusão mesmo se uma compra/crediário for criado concorrentemente.
-  // Endereços pertencem ao cadastro e são removidos pelo ON DELETE CASCADE.
-  await prisma.cliente.delete({ where: { id: req.params.id } });
+  const id = req.params.id;
+  // Dívida em aberto impede a exclusão.
+  const parcelasEmAberto = await prisma.parcela.count({
+    where: { compra: { clienteId: id }, status: { not: "PAGA" } },
+  });
+  if (parcelasEmAberto > 0) {
+    return res.status(409).json({ error: "Cliente possui parcelas em aberto e não pode ser excluído." });
+  }
+  // Mesmo quitadas, as compras são histórico de vendas (e as movimentações de estoque
+  // apontam para os itens delas), então o cadastro fica preservado.
+  if (await prisma.compra.count({ where: { clienteId: id } })) {
+    return res.status(409).json({ error: "Cliente possui compras registradas e não pode ser excluído." });
+  }
+  // Sem compras, o crediário é uma linha de crédito sem uso e sai junto com o cadastro.
+  // Endereços são removidos pelo ON DELETE CASCADE. O delete do cliente ainda lança
+  // P2025 (404) se o cadastro não existir, e a transação desfaz o deleteMany.
+  await prisma.$transaction([
+    prisma.crediario.deleteMany({ where: { clienteId: id } }),
+    prisma.cliente.delete({ where: { id } }),
+  ]);
   res.status(204).send();
 }));
 
