@@ -62,7 +62,7 @@ router.get("/:id", asyncRoute(async (req, res) => {
   });
   if (!cliente) return res.status(404).json({ error: "Cliente não encontrado." });
   res.json(cliente);
-});
+}));
 
 router.post("/", async (req, res) => {
   const exposicaoCreditoCrediario = Number(process.env.EXPOSICAO_CREDITO_CREDIARIO) || 0;
