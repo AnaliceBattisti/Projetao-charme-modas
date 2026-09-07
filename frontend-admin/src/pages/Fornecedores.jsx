@@ -3,7 +3,14 @@ import { api } from "../api.js";
 import { IconPlus, IconSearch, IconTrash } from "../icons.jsx";
 import Modal from "../components/Modal.jsx";
 
-const emptyForm = { nomeRazaoSocial: "", cnpj: "", localizacao: "", categoria: "" };
+const emptyForm = {
+  nomeRazaoSocial: "",
+  cnpj: "",
+  localizacao: "",
+  categoria: "",
+  telefone: "",
+  email: "",
+};
 
 function formatCnpj(value) {
   const digits = value.replace(/\D/g, "").slice(0, 14);
@@ -120,6 +127,19 @@ export default function Fornecedores() {
             value={form.categoria}
             onChange={(e) => setForm({ ...form, categoria: e.target.value })}
           />
+          <input
+            className="cm-input"
+            placeholder="Telefone"
+            value={form.telefone}
+            onChange={(e) => setForm({ ...form, telefone: e.target.value })}
+          />
+          <input
+            className="cm-input"
+            type="email"
+            placeholder="E-mail"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+          />
           <button className="cm-button-pill" type="submit">
             Adicionar
           </button>
@@ -139,6 +159,7 @@ export default function Fornecedores() {
                 <th>CNPJ</th>
                 <th>Localização</th>
                 <th>Categoria</th>
+                <th>Produtos</th>
                 <th></th>
               </tr>
             </thead>
@@ -149,6 +170,7 @@ export default function Fornecedores() {
                   <td>{f.cnpj}</td>
                   <td>{f.localizacao || "—"}</td>
                   <td>{f.categoria || "—"}</td>
+                  <td>{f._count?.produtos ?? 0}</td>
                   <td>
                     <button className="cm-link-button" onClick={() => handleDelete(f.id)}>
                       <IconTrash width={14} height={14} />

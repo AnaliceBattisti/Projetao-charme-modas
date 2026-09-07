@@ -1,7 +1,27 @@
 import { Router } from "express";
+import multer from "multer";
+import path from "node:path";
+import crypto from "node:crypto";
 import { prisma } from "../lib/prisma.js";
 
 const router = Router();
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: path.join(process.cwd(), "uploads"),
+    filename: (req, file, cb) => {
+      const nomeUnico = `${crypto.randomUUID()}${path.extname(file.originalname)}`;
+      cb(null, nomeUnico);
+    },
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype.startsWith("image/")) {
+      return cb(new Error("Envie um arquivo de imagem."));
+    }
+    cb(null, true);
+  },
+});
 
 router.get("/", async (req, res) => {
   const produtos = await prisma.produto.findMany({
@@ -45,6 +65,16 @@ router.delete("/:id", async (req, res) => {
   }
   await prisma.produto.delete({ where: { id } });
   res.status(204).send();
+});
+
+// Foto de capa do produto — enviada depois do produto já criado (multipart/form-data, campo "imagem")
+router.post("/:id/imagem", upload.single("imagem"), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "Nenhuma imagem enviada." });
+  const produto = await prisma.produto.update({
+    where: { id: Number(req.params.id) },
+    data: { imagemUrl: `/uploads/${req.file.filename}` },
+  });
+  res.json(produto);
 });
 
 // Variações do produto (cor/tamanho/SKU)

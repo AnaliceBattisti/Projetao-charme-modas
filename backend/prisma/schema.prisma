@@ -31,6 +31,8 @@ model Fornecedor {
   cnpj         String @unique
   localizacao  String?
   categoria    String?
+  telefone     String?
+  email        String?
 
   produtos     Produto[]
 }
@@ -44,6 +46,8 @@ model Produto {
   categoria     String?
   precoCusto    Decimal  @db.Decimal(10, 2)
   precoVenda    Decimal  @db.Decimal(10, 2)
+  // Nao estava no diagrama original — uma foto de capa opcional por produto.
+  imagemUrl     String?
 
   fornecedor    Fornecedor @relation(fields: [fornecedorId], references: [id])
   variacoes     Variacao[]

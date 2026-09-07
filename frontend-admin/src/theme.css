@@ -1,25 +1,33 @@
 :root {
-  --cm-lavender: #e6d6ef;
-  --cm-pink: #eec3da;
-  --cm-plum: #5c2a4d;
-  --cm-plum-light: #8a4d75;
-  --cm-bg: #f8f3fa;
+  /* Paleta oficial (kit de marca do Figma) */
+  --cm-vinho: #7a145f;
+  --cm-roxo: #9a3882;
+  --cm-rosa: #e9c6dd;
+  --cm-blush: #fff4f9;
+  --cm-creme: #fff9f6;
+  --cm-texto: #211a1f;
+
+  --cm-lavender: var(--cm-blush);
+  --cm-pink: var(--cm-rosa);
+  --cm-plum: var(--cm-vinho);
+  --cm-plum-light: var(--cm-roxo);
+  --cm-bg: var(--cm-creme);
   --cm-surface: #ffffff;
-  --cm-surface-alt: #f1e4f2;
-  --cm-text: #3d1a34;
-  --cm-text-muted: #8a7292;
-  --cm-border: #e3d0e6;
+  --cm-surface-alt: var(--cm-blush);
+  --cm-text: var(--cm-texto);
+  --cm-text-muted: #8a7480;
+  --cm-border: var(--cm-rosa);
   --cm-gradient-soft: linear-gradient(135deg, var(--cm-pink), var(--cm-lavender));
   --cm-gradient: linear-gradient(135deg, var(--cm-plum), var(--cm-plum-light));
 
-  --cm-accent: #8e5aa8;
-  --cm-accent-dark: #74468b;
+  --cm-accent: var(--cm-vinho);
+  --cm-accent-dark: #5c0f49;
 
-  --cm-sidebar-bg: #1a0d1f;
+  --cm-sidebar-bg: #2e0f26;
   --cm-sidebar-border: rgba(255, 255, 255, 0.08);
-  --cm-sidebar-text: #b9a3bd;
+  --cm-sidebar-text: #c9a8be;
   --cm-sidebar-text-active: #ffffff;
-  --cm-sidebar-hover-bg: rgba(255, 255, 255, 0.06);
+  --cm-sidebar-hover-bg: rgba(255, 255, 255, 0.08);
 }
 
 * {
@@ -192,6 +200,40 @@ a {
   padding: 8px 10px;
   border-bottom: 1px solid var(--cm-border);
   font-size: 0.9rem;
+}
+
+.cm-produto-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cm-thumb {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--cm-surface-alt);
+}
+
+.cm-thumb-placeholder {
+  border: 1px dashed var(--cm-border);
+}
+
+.cm-image-upload {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.cm-image-preview {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid var(--cm-border);
 }
 
 .cm-table th {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { IconPlus } from "../icons.jsx";
+import { situacao } from "../estoqueUtils.js";
 
 const emptyEntradaForm = { variacaoId: "", quantidade: "", motivo: "" };
 const emptyAjusteForm = { variacaoId: "", quantidade: "", motivo: "" };
@@ -10,13 +11,6 @@ const TIPO_BADGE = {
   SAIDA: "cm-badge-red",
   AJUSTE: "cm-badge-purple",
 };
-
-function situacao(variacao) {
-  if (variacao.estoqueAtual <= 0) return { label: "Esgotado", badge: "cm-badge-red" };
-  if (variacao.estoqueAtual <= variacao.estoqueMinimo)
-    return { label: "Estoque baixo", badge: "cm-badge-yellow" };
-  return { label: "Adequado", badge: "cm-badge-green" };
-}
 
 export default function Estoque() {
   const [variacoes, setVariacoes] = useState([]);
@@ -80,6 +74,21 @@ export default function Estoque() {
     return `${v.produto.nome} — ${v.cor || "—"} / ${v.tamanho || "—"} (${v.sku})`;
   }
 
+  function previewEstoque(variacaoId, quantidade) {
+    const variacao = variacoes.find((v) => v.id === Number(variacaoId));
+    if (!variacao || quantidade === "" || Number.isNaN(Number(quantidade))) return null;
+    const atualizado = variacao.estoqueAtual + Number(quantidade);
+    return `Estoque atual: ${variacao.estoqueAtual} un → Estoque atualizado: ${atualizado} un`;
+  }
+
+  const itensEmEstoque = variacoes.reduce((sum, v) => sum + v.estoqueAtual, 0);
+  const totalSkus = variacoes.filter((v) => v.sku).length;
+  const totalAlertas = variacoes.filter((v) => situacao(v).label !== "Adequado").length;
+  const inicioMes = new Date();
+  inicioMes.setDate(1);
+  inicioMes.setHours(0, 0, 0, 0);
+  const movimentacoesDoMes = movimentacoes.filter((m) => new Date(m.data) >= inicioMes).length;
+
   return (
     <div>
       <div className="cm-page-header">
@@ -108,6 +117,25 @@ export default function Estoque() {
 
       {error && <p className="cm-error">{error}</p>}
 
+      <div className="cm-card-grid">
+        <div className="cm-card">
+          <p>Itens em estoque</p>
+          <strong>{itensEmEstoque}</strong>
+        </div>
+        <div className="cm-card">
+          <p>SKUs</p>
+          <strong>{totalSkus}</strong>
+        </div>
+        <div className="cm-card">
+          <p>Alertas</p>
+          <strong>{totalAlertas}</strong>
+        </div>
+        <div className="cm-card">
+          <p>Movimentações (mês)</p>
+          <strong>{movimentacoesDoMes}</strong>
+        </div>
+      </div>
+
       {modo === "entrada" && (
         <div className="cm-card" style={{ marginBottom: 20 }}>
           <h2 className="cm-section-title">Registrar entrada</h2>
@@ -134,6 +162,11 @@ export default function Estoque() {
               onChange={(e) => setEntradaForm({ ...entradaForm, quantidade: e.target.value })}
               required
             />
+            {previewEstoque(entradaForm.variacaoId, entradaForm.quantidade) && (
+              <p className="cm-text-muted" style={{ width: "100%", margin: 0 }}>
+                {previewEstoque(entradaForm.variacaoId, entradaForm.quantidade)}
+              </p>
+            )}
             <input
               className="cm-input"
               placeholder="Motivo (ex.: Chegada de mercadoria)"
@@ -175,6 +208,11 @@ export default function Estoque() {
               onChange={(e) => setAjusteForm({ ...ajusteForm, quantidade: e.target.value })}
               required
             />
+            {previewEstoque(ajusteForm.variacaoId, ajusteForm.quantidade) && (
+              <p className="cm-text-muted" style={{ width: "100%", margin: 0 }}>
+                {previewEstoque(ajusteForm.variacaoId, ajusteForm.quantidade)}
+              </p>
+            )}
             <input
               className="cm-input"
               placeholder="Motivo (ex.: Inventário - item danificado)"

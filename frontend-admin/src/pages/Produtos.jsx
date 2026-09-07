@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { api } from "../api.js";
+import { api, BASE_URL } from "../api.js";
 import { IconPlus, IconSearch, IconChevronRight, IconTrash } from "../icons.jsx";
 import Modal from "../components/Modal.jsx";
 import { formatCurrencyInput, parseCurrencyInput } from "../format.js";
@@ -34,6 +34,8 @@ export default function Produtos() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const [imagemFile, setImagemFile] = useState(null);
+  const [imagemPreview, setImagemPreview] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
   const [categoriaFiltro, setCategoriaFiltro] = useState("Todos");
   const [busca, setBusca] = useState("");
@@ -52,18 +54,35 @@ export default function Produtos() {
     api.get("/fornecedores").then(setFornecedores).catch((err) => setError(err.message));
   }, []);
 
+  function closeForm() {
+    setShowForm(false);
+    setForm(emptyForm);
+    setImagemFile(null);
+    setImagemPreview(null);
+  }
+
+  function handleImagemChange(e) {
+    const file = e.target.files[0];
+    setImagemFile(file || null);
+    setImagemPreview(file ? URL.createObjectURL(file) : null);
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
     try {
-      await api.post("/produtos", {
+      const produto = await api.post("/produtos", {
         ...form,
         fornecedorId: Number(form.fornecedorId),
         precoCusto: parseCurrencyInput(form.precoCusto),
         precoVenda: parseCurrencyInput(form.precoVenda),
       });
-      setForm(emptyForm);
-      setShowForm(false);
+      if (imagemFile) {
+        const formData = new FormData();
+        formData.append("imagem", imagemFile);
+        await api.upload(`/produtos/${produto.id}/imagem`, formData);
+      }
+      closeForm();
       loadProdutos();
     } catch (err) {
       setError(err.message);
@@ -151,7 +170,7 @@ export default function Produtos() {
 
       {error && <p className="cm-error">{error}</p>}
 
-      <Modal open={showForm} onClose={() => setShowForm(false)} title="Novo produto">
+      <Modal open={showForm} onClose={closeForm} title="Novo produto">
         {fornecedores.length === 0 ? (
             <p>
               Cadastre um <Link to="/fornecedores">fornecedor</Link> antes de criar um produto.
@@ -220,6 +239,11 @@ export default function Produtos() {
                 onChange={(e) => setForm({ ...form, precoVenda: formatCurrencyInput(e.target.value) })}
                 required
               />
+              <label className="cm-label">Foto (opcional)</label>
+              <div className="cm-image-upload">
+                {imagemPreview && <img src={imagemPreview} alt="Prévia" className="cm-image-preview" />}
+                <input type="file" accept="image/*" onChange={handleImagemChange} />
+              </div>
               <button className="cm-button-pill" type="submit">
                 Salvar
               </button>
@@ -276,11 +300,24 @@ export default function Produtos() {
                       onClick={() => setExpandedId(isExpanded ? null : produto.id)}
                     >
                       <td>
-                        <strong>{produto.nome}</strong>
-                        <br />
-                        <span className="cm-text-muted">
-                          {produto.marca || "sem marca"} · {produto.variacoes.length} variações
-                        </span>
+                        <div className="cm-produto-cell">
+                          {produto.imagemUrl ? (
+                            <img
+                              className="cm-thumb"
+                              src={`${BASE_URL}${produto.imagemUrl}`}
+                              alt={produto.nome}
+                            />
+                          ) : (
+                            <div className="cm-thumb cm-thumb-placeholder" />
+                          )}
+                          <div>
+                            <strong>{produto.nome}</strong>
+                            <br />
+                            <span className="cm-text-muted">
+                              {produto.marca || "sem marca"} · {produto.variacoes.length} variações
+                            </span>
+                          </div>
+                        </div>
                       </td>
                       <td>
                         {produto.categoria ? (
