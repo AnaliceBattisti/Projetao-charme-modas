@@ -76,7 +76,7 @@ test("cadastra cliente com e-mail e vários endereços na mesma operação", asy
   assert.equal(result.data.cpf, "52998224725");
   assert.equal(result.data.email, "maria@example.com");
   assert.equal(result.data.telefone, "87999990000");
-  assert.equal(result.data.crediario, null);
+  assert.equal(result.data.crediario.status, "ATIVO");
   assert.equal(result.data.enderecos.length, 2);
   assert.equal(result.data.enderecos[0].cep, "55290000");
   assert.equal(result.data.enderecos[0].estado, "PE");
@@ -178,12 +178,14 @@ test("detalha histórico com itens, produtos, parcelas e crediário; protege ví
   assert.deepEqual(history.data[1].parcelas.map((entry) => entry.numero), [1, 2]);
   assert.equal((await request(`/clientes/${cliente.id}`, { method: "DELETE" })).status, 409);
   assert.equal(await prisma.enderecoCliente.count({ where: { clienteId: cliente.id } }), 1);
-  const withCredit = await createCliente();
-  await prisma.crediario.create({ data: { clienteId: withCredit.id, limiteCredito: "500.00" } });
-  assert.equal((await request(`/clientes/${withCredit.id}`, { method: "DELETE" })).status, 409);
-  const detail = await request(`/clientes/${withCredit.id}`);
+  const detail = await request(`/clientes/${cliente.id}`);
   assert.equal(detail.data.crediario.status, "ATIVO");
   assert.deepEqual((await request(`/clientes/${cliente.id}`)).data.compras, history.data);
+  // Compra quitada também preserva o cadastro, mas com mensagem diferente da dívida em aberto.
+  await prisma.parcela.updateMany({ where: { compraId: compra.id }, data: { status: "PAGA" } });
+  const quitado = await request(`/clientes/${cliente.id}`, { method: "DELETE" });
+  assert.equal(quitado.status, 409);
+  assert.match(quitado.data.error, /compras registradas/);
 });
 
 test("exclui cadastro sem vínculos financeiros e seus endereços", async () => {
@@ -192,6 +194,8 @@ test("exclui cadastro sem vínculos financeiros e seus endereços", async () => 
   assert.equal(result.status, 204);
   assert.equal(result.data, null);
   assert.equal(await prisma.enderecoCliente.count({ where: { clienteId: cliente.id } }), 0);
+  // O crediário sem uso sai junto com o cadastro.
+  assert.equal(await prisma.crediario.count({ where: { clienteId: cliente.id } }), 0);
   assert.equal((await request(`/clientes/${cliente.id}`)).status, 404);
 });
 
