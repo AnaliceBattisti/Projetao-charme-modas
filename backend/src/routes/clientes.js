@@ -25,7 +25,6 @@ for (const parameter of ["id", "enderecoId"]) {
 }
 
 async function cpfExists(cpf, id) {
-  // Também reconhece cadastros antigos que armazenaram a máscara do CPF.
   return prisma.cliente.findFirst({
     where: { cpf: { in: cpfFormats(cpf) }, ...(id ? { id: { not: id } } : {}) },
     select: { id: true },
@@ -78,7 +77,7 @@ router.post("/", asyncRoute(async (req, res) => {
   if (await cpfExists(data.cpf)) {
     return res.status(409).json({ error: "Já existe um cliente cadastrado com este CPF." });
   }
-  // Todo cadastro nasce com crediário; o limite inicial vem de EXPOSICAO_CREDITO_CREDIARIO.
+
   const limiteInicial = Number(process.env.EXPOSICAO_CREDITO_CREDIARIO) || 0;
   const cliente = await prisma.cliente.create({
     data: {
@@ -112,14 +111,11 @@ router.delete("/:id", asyncRoute(async (req, res) => {
   if (parcelasEmAberto > 0) {
     return res.status(409).json({ error: "Cliente possui parcelas em aberto e não pode ser excluído." });
   }
-  // Mesmo quitadas, as compras são histórico de vendas (e as movimentações de estoque
-  // apontam para os itens delas), então o cadastro fica preservado.
+  
   if (await prisma.compra.count({ where: { clienteId: id } })) {
     return res.status(409).json({ error: "Cliente possui compras registradas e não pode ser excluído." });
   }
-  // Sem compras, o crediário é uma linha de crédito sem uso e sai junto com o cadastro.
-  // Endereços são removidos pelo ON DELETE CASCADE. O delete do cliente ainda lança
-  // P2025 (404) se o cadastro não existir, e a transação desfaz o deleteMany.
+ 
   await prisma.$transaction([
     prisma.crediario.deleteMany({ where: { clienteId: id } }),
     prisma.cliente.delete({ where: { id } }),
@@ -138,7 +134,6 @@ router.get("/:id/enderecos", asyncRoute(async (req, res) => {
 
 router.post("/:id/enderecos", asyncRoute(async (req, res) => {
   const data = validateEndereco(req.body);
-  // O connect mantém a criação atômica e retorna P2025 se o cliente não existe.
   const endereco = await prisma.enderecoCliente.create({
     data: { ...data, cliente: { connect: { id: req.params.id } } },
   });
@@ -159,20 +154,6 @@ router.delete("/:id/enderecos/:enderecoId", asyncRoute(async (req, res) => {
   });
   res.status(204).send();
 }));
-
-router.use((error, req, res, next) => {
-  if (error instanceof ValidationError) return res.status(400).json({ error: error.message });
-  if (error.code === "P2002") {
-    return res.status(409).json({ error: "Já existe um cliente cadastrado com este CPF." });
-  }
-  if (error.code === "P2025") {
-    return res.status(404).json({ error: "Cliente ou endereço não encontrado." });
-  }
-  if (error.code === "P2003" && req.method === "DELETE") {
-    return res.status(409).json({ error: "Cliente possui compras ou crediário vinculados e não pode ser excluído." });
-  }
-  next(error);
-});
 
 router.get('/:id/debitos', async (req, res) => {
   try {
@@ -252,6 +233,21 @@ router.get('/:id/debitos', async (req, res) => {
     console.error('Erro ao buscar débitos do cliente:', error);
     return res.status(500).json({ erro: 'Erro interno ao consultar débitos.' });
   }
+});
+
+// Inclui também os erros de validação de parâmetros da rota de débitos.
+router.use((error, req, res, next) => {
+  if (error instanceof ValidationError) return res.status(400).json({ error: error.message });
+  if (error.code === "P2002") {
+    return res.status(409).json({ error: "Já existe um cliente cadastrado com este CPF." });
+  }
+  if (error.code === "P2025") {
+    return res.status(404).json({ error: "Cliente ou endereço não encontrado." });
+  }
+  if (error.code === "P2003" && req.method === "DELETE") {
+    return res.status(409).json({ error: "Cliente possui compras ou crediário vinculados e não pode ser excluído." });
+  }
+  next(error);
 });
 
 export default router;
