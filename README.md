@@ -41,3 +41,9 @@ docker-compose.yml   Postgres local
    ```
    Abre em `http://localhost:5173`.
 
+## Documentação
+
+- [docs/ESCOPO.md](./docs/ESCOPO.md) — o que está dentro/fora do escopo e por quê, divisão da equipe, status de cada tela
+- [docs/ARQUITETURA.md](./docs/ARQUITETURA.md) — como backend e frontend são organizados, decisões técnicas
+- [docs/BANCO_DE_DADOS.md](./docs/BANCO_DE_DADOS.md) — modelo de dados, relações, o que mudou em relação ao diagrama ER original
+
