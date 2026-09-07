@@ -8,6 +8,7 @@ import {
   IconUsers,
   IconCard,
   IconCart,
+  IconGear,
   IconLogout,
 } from "../icons.jsx";
 
@@ -19,6 +20,7 @@ const links = [
   { to: "/clientes", label: "Clientes", Icon: IconUsers },
   { to: "/crediario", label: "Crediário", Icon: IconCard },
   { to: "/compras", label: "Compras / Vendas", Icon: IconCart },
+  { to: "/configuracoes", label: "Configurações", Icon: IconGear },
 ];
 
 export default function Layout() {
@@ -41,7 +43,10 @@ export default function Layout() {
               e.currentTarget.style.display = "none";
             }}
           />
-          <p className="cm-brand">Charme Modas</p>
+          <div>
+            <p className="cm-brand">Charme Modas</p>
+            <p className="cm-sidebar-subtitle">Painel administrativo</p>
+          </div>
         </div>
 
         <nav className="cm-sidebar-nav">

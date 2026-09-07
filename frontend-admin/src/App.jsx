@@ -9,6 +9,7 @@ import Fornecedores from "./pages/Fornecedores.jsx";
 import Clientes from "./pages/Clientes.jsx";
 import Crediario from "./pages/Crediario.jsx";
 import Compras from "./pages/Compras.jsx";
+import Configuracoes from "./pages/Configuracoes.jsx";
 
 export default function App() {
   return (
@@ -29,6 +30,7 @@ export default function App() {
           <Route path="/clientes" element={<Clientes />} />
           <Route path="/crediario" element={<Crediario />} />
           <Route path="/compras" element={<Compras />} />
+          <Route path="/configuracoes" element={<Configuracoes />} />
         </Route>
       </Routes>
     </BrowserRouter>
