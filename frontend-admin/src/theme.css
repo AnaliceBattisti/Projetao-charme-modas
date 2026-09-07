@@ -68,17 +68,17 @@ a {
 }
 
 .cm-brand {
-  font-family: "Segoe Script", cursive;
-  font-size: 1.3rem;
+  font-family: "Dancing Script", "Segoe Script", cursive;
+  font-weight: 700;
+  font-size: 1.6rem;
   color: var(--cm-sidebar-text-active);
   margin: 0;
 }
 
-.cm-tagline {
-  margin: 0 0 24px 4px;
-  font-size: 0.8rem;
+.cm-sidebar-subtitle {
+  margin: 2px 0 0;
+  font-size: 0.75rem;
   color: var(--cm-sidebar-text);
-  font-style: italic;
 }
 
 .cm-sidebar-nav {
@@ -225,6 +225,9 @@ a {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.cm-inline-form .cm-image-upload {
   margin-bottom: 12px;
 }
 
@@ -234,6 +237,45 @@ a {
   border-radius: 8px;
   object-fit: cover;
   border: 1px solid var(--cm-border);
+  flex-shrink: 0;
+}
+
+.cm-image-preview-empty {
+  background: var(--cm-surface-alt);
+  border-style: dashed;
+}
+
+.cm-file-button {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--cm-border);
+  border-radius: 999px;
+  padding: 9px 18px;
+  background: var(--cm-surface);
+  color: var(--cm-text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+.cm-file-button:hover {
+  background: var(--cm-surface-alt);
+}
+
+.cm-file-input-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .cm-table th {
@@ -506,9 +548,13 @@ a {
   display: block;
   width: 48px;
   height: 48px;
-  border-radius: 10px;
+  border-radius: 50%;
   object-fit: cover;
   margin-bottom: 16px;
+}
+
+.cm-sidebar-brand .cm-logo-square {
+  margin-bottom: 0;
 }
 
 .cm-login-form-wrap .cm-brand {
@@ -606,8 +652,9 @@ a {
 }
 
 .cm-login-image-title {
-  font-family: "Segoe Script", cursive;
-  font-size: 1.9rem;
+  font-family: "Dancing Script", "Segoe Script", cursive;
+  font-weight: 700;
+  font-size: 2.2rem;
   margin: 0 0 8px;
 }
 

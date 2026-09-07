@@ -43,7 +43,10 @@ export default function Layout() {
               e.currentTarget.style.display = "none";
             }}
           />
-          <p className="cm-brand">Charme Modas</p>
+          <div>
+            <p className="cm-brand">Charme Modas</p>
+            <p className="cm-sidebar-subtitle">Painel administrativo</p>
+          </div>
         </div>
 
         <nav className="cm-sidebar-nav">

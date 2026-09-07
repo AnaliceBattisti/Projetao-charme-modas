@@ -46,8 +46,6 @@ model Produto {
   categoria     String?
   precoCusto    Decimal  @db.Decimal(10, 2)
   precoVenda    Decimal  @db.Decimal(10, 2)
-  // Nao estava no diagrama original — uma foto de capa opcional por produto.
-  imagemUrl     String?
 
   fornecedor    Fornecedor @relation(fields: [fornecedorId], references: [id])
   variacoes     Variacao[]
@@ -64,6 +62,9 @@ model Variacao {
   // a partir do histórico de movimentações a cada consulta.
   estoqueMinimo  Int    @default(0)
   estoqueAtual   Int    @default(0)
+  // Foto por variação (não por produto) — a cor muda a aparência da peça,
+  // o tamanho não, então faz mais sentido a foto acompanhar cor+tamanho aqui.
+  imagemUrl      String?
 
   produto              Produto @relation(fields: [produtoId], references: [id])
   movimentacoesEstoque MovimentacaoEstoque[]

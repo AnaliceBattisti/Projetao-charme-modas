@@ -67,16 +67,6 @@ router.delete("/:id", async (req, res) => {
   res.status(204).send();
 });
 
-// Foto de capa do produto — enviada depois do produto já criado (multipart/form-data, campo "imagem")
-router.post("/:id/imagem", upload.single("imagem"), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: "Nenhuma imagem enviada." });
-  const produto = await prisma.produto.update({
-    where: { id: Number(req.params.id) },
-    data: { imagemUrl: `/uploads/${req.file.filename}` },
-  });
-  res.json(produto);
-});
-
 // Variações do produto (cor/tamanho/SKU)
 router.post("/:id/variacoes", async (req, res) => {
   const { cor, tamanho, sku } = req.body;
@@ -87,6 +77,16 @@ router.post("/:id/variacoes", async (req, res) => {
     data: { cor, tamanho, sku: sku?.trim() || null, produtoId: Number(req.params.id) },
   });
   res.status(201).json(variacao);
+});
+
+// Foto da variação (cor+tamanho) — enviada depois da variação já criada (multipart/form-data, campo "imagem")
+router.post("/:id/variacoes/:variacaoId/imagem", upload.single("imagem"), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "Nenhuma imagem enviada." });
+  const variacao = await prisma.variacao.update({
+    where: { id: Number(req.params.variacaoId) },
+    data: { imagemUrl: `/uploads/${req.file.filename}` },
+  });
+  res.json(variacao);
 });
 
 router.delete("/:id/variacoes/:variacaoId", async (req, res) => {
