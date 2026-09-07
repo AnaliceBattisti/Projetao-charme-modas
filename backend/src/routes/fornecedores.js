@@ -4,7 +4,9 @@ import { prisma } from "../lib/prisma.js";
 const router = Router();
 
 router.get("/", async (req, res) => {
-  const fornecedores = await prisma.fornecedor.findMany();
+  const fornecedores = await prisma.fornecedor.findMany({
+    include: { _count: { select: { produtos: true } } },
+  });
   res.json(fornecedores);
 });
 

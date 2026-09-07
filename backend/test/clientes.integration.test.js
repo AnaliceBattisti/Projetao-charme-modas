@@ -207,14 +207,38 @@ test("detalha histórico com itens, produtos, parcelas e crediário; protege ví
   assert.deepEqual(history.data.map((entry) => entry.id), [recent.id, compra.id]);
   assert.equal(history.data[1].itens[0].variacao.produto.nome, "Vestido de teste");
   assert.deepEqual(history.data[1].parcelas.map((entry) => entry.numero), [1, 2]);
-  assert.equal((await request(`/clientes/${cliente.id}`, { method: "DELETE" })).status, 409);
+  const comDivida = await request(`/clientes/${cliente.id}`, { method: "DELETE" });
+  assert.equal(comDivida.status, 409);
+  assert.match(comDivida.data.error, /parcelas em aberto/);
   assert.equal(await prisma.enderecoCliente.count({ where: { clienteId: cliente.id } }), 1);
-  const withCredit = await createCliente();
-  assert.equal(await prisma.compra.count({ where: { clienteId: withCredit.id } }), 0);
-  assert.equal((await request(`/clientes/${withCredit.id}`, { method: "DELETE" })).status, 409);
-  const detail = await request(`/clientes/${withCredit.id}`);
+  const detail = await request(`/clientes/${cliente.id}`);
   assert.equal(detail.data.crediario.status, "ATIVO");
   assert.deepEqual((await request(`/clientes/${cliente.id}`)).data.compras, history.data);
+  // Compra quitada também preserva o cadastro, mas com mensagem diferente da dívida em aberto.
+  await prisma.parcela.updateMany({ where: { compraId: compra.id }, data: { status: "PAGA" } });
+  const quitado = await request(`/clientes/${cliente.id}`, { method: "DELETE" });
+  assert.equal(quitado.status, 409);
+  assert.match(quitado.data.error, /compras registradas/);
+  assert.equal((await request(`/clientes/${cliente.id}`)).status, 200);
+  assert.equal(await prisma.crediario.count({ where: { clienteId: cliente.id } }), 1);
+  assert.equal(await prisma.enderecoCliente.count({ where: { clienteId: cliente.id } }), 1);
+});
+
+test("exclui cliente sem compras junto com o crediário automático e os endereços", async () => {
+  const cliente = await createCliente({ enderecos: [endereco] });
+  assert.equal(cliente.crediario.clienteId, cliente.id);
+  assert.equal(cliente.enderecos.length, 1);
+  assert.equal(await prisma.compra.count({ where: { clienteId: cliente.id } }), 0);
+
+  const result = await request(`/clientes/${cliente.id}`, { method: "DELETE" });
+  assert.equal(result.status, 204);
+  assert.equal(result.data, null);
+  assert.equal(await prisma.cliente.count({ where: { id: cliente.id } }), 0);
+  assert.equal(await prisma.crediario.count({ where: { clienteId: cliente.id } }), 0);
+  assert.equal(await prisma.enderecoCliente.count({ where: { clienteId: cliente.id } }), 0);
+  assert.equal((await request(`/clientes/${cliente.id}`)).status, 404);
+  assert.equal((await request(`/crediarios/cliente/${cliente.id}`)).status, 404);
+  assert.equal((await request(`/clientes/${cliente.id}`, { method: "DELETE" })).status, 404);
 });
 
 test("exclui cadastro legado sem crediário ou compras e seus endereços", async () => {
@@ -226,6 +250,7 @@ test("exclui cadastro legado sem crediário ou compras e seus endereços", async
   assert.equal(result.status, 204);
   assert.equal(result.data, null);
   assert.equal(await prisma.enderecoCliente.count({ where: { clienteId: cliente.id } }), 0);
+  assert.equal(await prisma.crediario.count({ where: { clienteId: cliente.id } }), 0);
   assert.equal((await request(`/clientes/${cliente.id}`)).status, 404);
 });
 

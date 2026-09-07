@@ -177,7 +177,7 @@ As regras de formato, tamanho e faixa acima são aplicadas pela API. O banco gar
 
 As relações no Prisma são `crediario: Crediario?`, `compras: Compra[]` e `enderecos: EnderecoCliente[]`. `POST /clientes` cria cliente, endereços opcionais e crediário em uma única operação atômica. O crediário inicia com status `ATIVO` e os campos `limiteCredito` e `limiteDisponivel` iguais ao valor de `EXPOSICAO_CREDITO_CREDIARIO`, usando zero quando a variável está ausente. Essa criação é feita pela API; a relação opcional no schema permite manter clientes antigos sem crediário.
 
-`PUT /clientes/:id` preserva os campos omitidos e não altera compras nem crediário. A API só permite excluir clientes sem compras e sem crediário vinculados; as chaves estrangeiras dessas tabelas impedem a exclusão e a resposta é `409`. Quando não há esses vínculos, a exclusão retorna `204` e os endereços são removidos em cascata. Isso também significa que um cliente novo, que já recebe crediário, não pode ser excluído mesmo sem compras ou dívida pendente.
+`PUT /clientes/:id` preserva os campos omitidos e não altera compras nem crediário. Na exclusão, a API rejeita parcelas em aberto e também qualquer compra registrada, mesmo quitada ou cancelada, retornando `409`. Sem compras, a presença de crediário não impede a exclusão: a API remove esse registro e o cliente na mesma transação, e os endereços são removidos em cascata. A resposta é `204`, inclusive para clientes novos com crediário automático. A remoção do crediário é explícita na API, não uma cascata dessa relação; as chaves estrangeiras continuam protegendo vínculos concorrentes, e uma falha desfaz a transação.
 
 ### EnderecoCliente
 

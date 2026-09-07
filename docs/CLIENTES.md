@@ -28,7 +28,7 @@ A variável `EXPOSICAO_CREDITO_CREDIARIO` define o limite inicial dos novos clie
 | GET | `/clientes/:id` | Cadastro, endereços, crediário e histórico de compras. |
 | POST | `/clientes` | Cria cliente, crediário e, opcionalmente, seus endereços em uma única operação. |
 | PUT | `/clientes/:id` | Atualiza os campos enviados do cadastro. |
-| DELETE | `/clientes/:id` | Exclui cliente sem compras ou crediário vinculados. |
+| DELETE | `/clientes/:id` | Exclui cliente sem compras, removendo seu crediário e endereços. |
 | GET | `/clientes/:id/compras` | Histórico de compras, da mais recente à mais antiga. |
 | GET | `/clientes/:id/debitos?dias=30` | Totais de parcelas pendentes, atrasadas e pagas até o horizonte informado. |
 | GET | `/clientes/:id/enderecos` | Lista os endereços do cliente. |
@@ -113,9 +113,9 @@ Um endereço só pode ser atualizado ou excluído quando pertence ao cliente inf
 
 As compras incluem itens com variação e produto, além das parcelas ordenadas por número. Os valores monetários do Prisma são serializados como strings decimais e as datas no formato ISO 8601.
 
-Clientes com qualquer compra (inclusive cancelada) ou crediário vinculado não podem ser excluídos: a API retorna `409` e preserva os registros. Quando a exclusão é permitida, os endereços do cliente são removidos junto com o cadastro. As restrições do banco também protegem contra vínculos criados simultaneamente à exclusão.
+Clientes com parcelas em aberto não podem ser excluídos: a API retorna `409` com a mensagem de dívida pendente. Mesmo sem parcelas em aberto, qualquer compra registrada (inclusive quitada ou cancelada) preserva o cliente e retorna `409` com a mensagem de compras registradas.
 
-Como os novos cadastros já possuem crediário, sua exclusão retorna `409` mesmo sem compras. A exclusão com `204` continua disponível para cadastros antigos que não tenham compras nem crediário. Essa proteção não remove automaticamente contas ou histórico financeiro.
+Quando não há compras, o cliente pode ser excluído mesmo que possua o crediário criado automaticamente. A API remove o crediário e o cliente na mesma transação; os endereços saem por `ON DELETE CASCADE`, e a resposta é `204`. Cadastros antigos sem crediário também podem ser removidos se não tiverem compras. As chaves estrangeiras continuam protegendo vínculos criados simultaneamente, e uma falha desfaz a transação.
 
 ## Consulta de débitos
 
@@ -148,7 +148,7 @@ A rota de débitos mantém o formato `{ "erro": "..." }` para cliente inexistent
 | --- | --- |
 | `400` | Dados inválidos, ID inválido, corpo vazio, campos não permitidos ou JSON malformado. |
 | `404` | Cliente/endereço não encontrado ou endereço que não pertence ao cliente da URL. |
-| `409` | CPF duplicado ou exclusão impedida por compras/crediário. |
+| `409` | CPF duplicado ou exclusão impedida por parcelas em aberto/compras registradas; também protege vínculos concorrentes. |
 | `413` | Corpo maior que o limite do parser JSON (100 KB). |
 | `500` | Erro interno, sem detalhes do banco na resposta. |
 

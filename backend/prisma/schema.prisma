@@ -31,6 +31,8 @@ model Fornecedor {
   cnpj         String @unique
   localizacao  String?
   categoria    String?
+  telefone     String?
+  email        String?
 
   produtos     Produto[]
 }
@@ -60,6 +62,9 @@ model Variacao {
   // a partir do histórico de movimentações a cada consulta.
   estoqueMinimo  Int    @default(0)
   estoqueAtual   Int    @default(0)
+  // Foto por variação (não por produto) — a cor muda a aparência da peça,
+  // o tamanho não, então faz mais sentido a foto acompanhar cor+tamanho aqui.
+  imagemUrl      String?
 
   produto              Produto @relation(fields: [produtoId], references: [id])
   movimentacoesEstoque MovimentacaoEstoque[]

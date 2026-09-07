@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { api } from "../api.js";
+import { api, BASE_URL } from "../api.js";
 import { IconPlus, IconSearch, IconChevronRight, IconTrash } from "../icons.jsx";
 import Modal from "../components/Modal.jsx";
 import { formatCurrencyInput, parseCurrencyInput } from "../format.js";
@@ -52,6 +52,11 @@ export default function Produtos() {
     api.get("/fornecedores").then(setFornecedores).catch((err) => setError(err.message));
   }, []);
 
+  function closeForm() {
+    setShowForm(false);
+    setForm(emptyForm);
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
@@ -62,8 +67,7 @@ export default function Produtos() {
         precoCusto: parseCurrencyInput(form.precoCusto),
         precoVenda: parseCurrencyInput(form.precoVenda),
       });
-      setForm(emptyForm);
-      setShowForm(false);
+      closeForm();
       loadProdutos();
     } catch (err) {
       setError(err.message);
@@ -97,6 +101,19 @@ export default function Produtos() {
     try {
       await api.post(`/produtos/${produtoId}/variacoes`, variacao);
       setVariacaoForms((prev) => ({ ...prev, [produtoId]: emptyVariacao }));
+      loadProdutos();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleVariacaoImagemChange(produtoId, variacaoId, file) {
+    if (!file) return;
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append("imagem", file);
+      await api.upload(`/produtos/${produtoId}/variacoes/${variacaoId}/imagem`, formData);
       loadProdutos();
     } catch (err) {
       setError(err.message);
@@ -151,7 +168,7 @@ export default function Produtos() {
 
       {error && <p className="cm-error">{error}</p>}
 
-      <Modal open={showForm} onClose={() => setShowForm(false)} title="Novo produto">
+      <Modal open={showForm} onClose={closeForm} title="Novo produto">
         {fornecedores.length === 0 ? (
             <p>
               Cadastre um <Link to="/fornecedores">fornecedor</Link> antes de criar um produto.
@@ -268,6 +285,7 @@ export default function Produtos() {
                   (sum, v) => sum + v.estoqueAtual,
                   0
                 );
+                const capa = produto.variacoes.find((v) => v.imagemUrl)?.imagemUrl;
                 const isExpanded = expandedId === produto.id;
                 return (
                   <Fragment key={produto.id}>
@@ -276,11 +294,20 @@ export default function Produtos() {
                       onClick={() => setExpandedId(isExpanded ? null : produto.id)}
                     >
                       <td>
-                        <strong>{produto.nome}</strong>
-                        <br />
-                        <span className="cm-text-muted">
-                          {produto.marca || "sem marca"} · {produto.variacoes.length} variações
-                        </span>
+                        <div className="cm-produto-cell">
+                          {capa ? (
+                            <img className="cm-thumb" src={`${BASE_URL}${capa}`} alt={produto.nome} />
+                          ) : (
+                            <div className="cm-thumb cm-thumb-placeholder" />
+                          )}
+                          <div>
+                            <strong>{produto.nome}</strong>
+                            <br />
+                            <span className="cm-text-muted">
+                              {produto.marca || "sem marca"} · {produto.variacoes.length} variações
+                            </span>
+                          </div>
+                        </div>
                       </td>
                       <td>
                         {produto.categoria ? (
@@ -308,6 +335,7 @@ export default function Produtos() {
                           <table className="cm-table" style={{ marginBottom: 12 }}>
                             <thead>
                               <tr>
+                                <th>Foto</th>
                                 <th>Cor</th>
                                 <th>Tamanho</th>
                                 <th>SKU</th>
@@ -318,11 +346,39 @@ export default function Produtos() {
                             <tbody>
                               {produto.variacoes.length === 0 ? (
                                 <tr>
-                                  <td colSpan={5}>Nenhuma variação ainda.</td>
+                                  <td colSpan={6}>Nenhuma variação ainda.</td>
                                 </tr>
                               ) : (
                                 produto.variacoes.map((v) => (
                                   <tr key={v.id}>
+                                    <td onClick={(e) => e.stopPropagation()}>
+                                      <div className="cm-image-upload">
+                                        {v.imagemUrl ? (
+                                          <img
+                                            src={`${BASE_URL}${v.imagemUrl}`}
+                                            alt=""
+                                            className="cm-image-preview"
+                                          />
+                                        ) : (
+                                          <div className="cm-image-preview cm-image-preview-empty" />
+                                        )}
+                                        <label className="cm-file-button">
+                                          {v.imagemUrl ? "Trocar" : "Adicionar"}
+                                          <input
+                                            className="cm-file-input-hidden"
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(e) =>
+                                              handleVariacaoImagemChange(
+                                                produto.id,
+                                                v.id,
+                                                e.target.files[0]
+                                              )
+                                            }
+                                          />
+                                        </label>
+                                      </div>
+                                    </td>
                                     <td>{v.cor || "—"}</td>
                                     <td>{v.tamanho || "—"}</td>
                                     <td>{v.sku || "—"}</td>
