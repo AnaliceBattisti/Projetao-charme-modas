@@ -32,11 +32,12 @@ backend/
     ├── server.js            Sobe o Express na porta do .env (padrão 3333)
     ├── app.js                Instancia o Express, cors, json, monta as rotas
     ├── lib/prisma.js         Client Prisma compartilhado (uma instância só)
+    ├── validation/clientes.js Validação e normalização de clientes, endereços e IDs
     └── routes/
         ├── fornecedores.js   CRUD completo
         ├── produtos.js       CRUD + variações (cor/tamanho/SKU) + travas de exclusão
         ├── estoque.js        Situação do estoque + registrar entrada/ajuste
-        ├── clientes.js       CRUD completo (sem tela no front ainda)
+        ├── clientes.js       Cadastro, endereços, histórico e débitos; abertura de crediário
         ├── crediario.js      CRUD básico (sem tela no front ainda)
         └── compras.js        Criação de compra + itens (falta baixa de estoque e geração de parcelas — ver TODO no arquivo)
 ```
@@ -48,6 +49,23 @@ Cada rota segue o mesmo padrão: recebe a requisição, valida o mínimo necess�
 - **Baixa/entrada de estoque**: `POST /estoque/movimentacoes` cria o registro de `MovimentacaoEstoque` e atualiza `Variacao.estoqueAtual` **na mesma transação** (`prisma.$transaction`), pra nunca ficar dessincronizado.
 - **Exclusão segura**: não dá pra excluir um `Produto` que ainda tem variações, nem uma `Variacao` que tenha estoque > 0 ou histórico de movimentação/venda. Ver `DELETE /produtos/:id` e `DELETE /produtos/:id/variacoes/:variacaoId`.
 - **Compra**: `POST /compras` cria a compra e os itens numa transação, mas **ainda não** dá baixa automática no estoque nem gera parcelas de crediário — isso está marcado como TODO no próprio arquivo de rota, é o próximo passo de quem for mexer em Compras/Crediário.
+
+### Módulo de clientes
+
+As rotas ficam em `src/routes/clientes.js`, montadas em `/clientes` pelo `app.js`. O módulo usa o Prisma Client compartilhado e concentra a validação de cadastro, endereços e IDs em `src/validation/clientes.js`. A tela `frontend-admin/src/pages/Clientes.jsx` ainda é um placeholder visual, sem chamadas à API.
+
+- **Cadastro integrado**: `POST /clientes` valida nome, CPF e os campos opcionais (idade, profissão, estado civil, telefone e e-mail), e aceita uma lista opcional de endereços de entrega. Cliente, endereços e crediário são criados na mesma operação atômica do Prisma; uma falha impede a gravação do conjunto. O crediário nasce `ATIVO`, com `limiteCredito` e `limiteDisponivel` definidos por `EXPOSICAO_CREDITO_CREDIARIO` (zero quando ausente). A resposta `201` inclui o cadastro, os endereços e o crediário, além do cabeçalho `Location`.
+- **Validação e unicidade**: o CPF tem os dígitos verificadores validados e é salvo sem máscara. A verificação de duplicidade também reconhece CPFs antigos com máscara; a restrição única do banco protege as gravações simultâneas do CPF normalizado. Telefone, e-mail, CEP e UF são normalizados. Campos desconhecidos e operações sobre compras ou crediário enviadas no corpo do cadastro são rejeitados.
+- **Consulta e edição**: `GET /clientes` lista os cadastros com endereços e crediário; `?busca=` filtra por nome sem distinguir maiúsculas ou por CPF. `GET /clientes/:id` também inclui o histórico de compras. `PUT /clientes/:id` altera somente os campos enviados, permite limpar opcionais e preserva o crediário existente.
+- **Endereços**: `GET` e `POST /clientes/:id/enderecos` consultam e adicionam endereços; `PUT` e `DELETE /clientes/:id/enderecos/:enderecoId` editam parcialmente e excluem. A atualização e a exclusão verificam o vínculo com o cliente da URL. Endereços existentes são alterados nessas rotas próprias, não no `PUT` do cadastro.
+- **Histórico e débitos**: `GET /clientes/:id/compras` retorna compras com itens, variações, produtos e parcelas. `GET /clientes/:id/debitos?dias=30` calcula `totalPendente`, `totalAtraso`, `totalPago` e `qtdParcelasAtrasadas` a partir das parcelas com vencimento até o horizonte informado, incluindo as já vencidas. O padrão é 30 dias, inclusive quando `dias=0`; o cálculo de atraso não altera o status salvo das parcelas.
+- **Exclusão protegida**: `DELETE /clientes/:id` retorna `409` se houver parcelas em aberto ou qualquer compra registrada, mesmo quitada. Sem compras, a API remove o crediário e o cliente na mesma transação, apaga os endereços em cascata e retorna `204`. Isso vale tanto para clientes novos com crediário automático quanto para cadastros antigos sem crediário.
+
+As falhas de validação retornam `400`, registros inexistentes ou endereços de outro cliente retornam `404`, e CPF duplicado ou exclusão impedida retornam `409`. As rotas de cadastro usam `{ "error": "..." }`; a consulta de débitos mantém `{ "erro": "..." }` para cliente inexistente e falhas internas. A validação comum de IDs usa `{ "error": "..." }` também nessa consulta.
+
+O módulo de clientes abre o crediário no cadastro e consulta os vínculos existentes. Bloqueio e alteração de limite ficam em `/crediarios`, criação de compras em `/compras` e baixa de parcelas em `/parcelas`. Editar um cliente não executa essas operações.
+
+Os testes ficam em `backend/test/clientes.validation.test.js` e `backend/test/clientes.integration.test.js`. A integração usa HTTP e PostgreSQL, exige `TEST_DATABASE_URL`, aplica as migrations em um schema exclusivo `clientes_test_<uuid>` e remove esse schema ao terminar. Os cenários cobrem cadastro com crediário e endereços, CPF duplicado, edição parcial, proteção dos vínculos e integração com compras, limites, bloqueio e pagamento de parcelas. Os contratos completos e os comandos de execução estão em [CLIENTES.md](./CLIENTES.md).
 
 ## Frontend admin (`frontend-admin/`)
 

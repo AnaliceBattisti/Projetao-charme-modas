@@ -12,6 +12,8 @@ if (!["postgres:", "postgresql:"].includes(databaseUrl.protocol)) throw new Erro
 const schema = `clientes_test_${randomUUID().replaceAll("-", "")}`;
 databaseUrl.searchParams.set("schema", schema);
 process.env.DATABASE_URL = databaseUrl.toString();
+// Configuração determinística, independente do limite usado no ambiente local.
+process.env.EXPOSICAO_CREDITO_CREDIARIO = "150";
 const { prisma } = await import("../src/lib/prisma.js");
 const { app } = await import("../src/app.js");
 let server;
@@ -36,7 +38,8 @@ async function request(path, { method = "GET", body, raw } = {}) {
     body: raw ?? (body === undefined ? undefined : JSON.stringify(body)),
     signal: AbortSignal.timeout(10000),
   });
-  const data = response.status === 204 ? null : await response.json();
+  const responseBody = await response.text();
+  const data = responseBody ? JSON.parse(responseBody) : null;
   return { status: response.status, data, headers: response.headers };
 }
 
@@ -65,7 +68,7 @@ after(async () => {
   }
 });
 
-test("cadastra cliente com e-mail e vários endereços na mesma operação", async () => {
+test("cadastra cliente, crediário e vários endereços na mesma operação", async () => {
   const result = await request("/clientes", { method: "POST", body: {
     nome: " Maria Integração ", cpf: "529.982.247-25", idade: 30, profissao: "Professora", estadoCivil: "Solteira",
     email: " MARIA@EXAMPLE.COM ", telefone: "+55 (87) 99999-0000", enderecos: [endereco, { ...endereco, numero: "20" }],
@@ -76,7 +79,10 @@ test("cadastra cliente com e-mail e vários endereços na mesma operação", asy
   assert.equal(result.data.cpf, "52998224725");
   assert.equal(result.data.email, "maria@example.com");
   assert.equal(result.data.telefone, "87999990000");
+  assert.equal(result.data.crediario.clienteId, result.data.id);
   assert.equal(result.data.crediario.status, "ATIVO");
+  assert.equal(Number(result.data.crediario.limiteCredito), 150);
+  assert.equal(Number(result.data.crediario.limiteDisponivel), 150);
   assert.equal(result.data.enderecos.length, 2);
   assert.equal(result.data.enderecos[0].cep, "55290000");
   assert.equal(result.data.enderecos[0].estado, "PE");
@@ -84,16 +90,39 @@ test("cadastra cliente com e-mail e vários endereços na mesma operação", asy
   assert.equal(detail.status, 200);
   assert.deepEqual(detail.data.compras, []);
   assert.equal(detail.data.enderecos.length, 2);
+  const credit = await request(`/crediarios/cliente/${result.data.id}`);
+  assert.equal(credit.status, 200);
+  assert.deepEqual(credit.data, result.data.crediario);
+  const listed = await request(`/clientes?busca=${result.data.cpf}`);
+  assert.deepEqual(listed.data[0].crediario, result.data.crediario);
+});
+
+test("mantém o limite inicial configurado e o padrão zero quando a variável está ausente", async () => {
+  const originalLimit = process.env.EXPOSICAO_CREDITO_CREDIARIO;
+  try {
+    for (const configuredLimit of [undefined, "0", "275.50"]) {
+      if (configuredLimit === undefined) delete process.env.EXPOSICAO_CREDITO_CREDIARIO;
+      else process.env.EXPOSICAO_CREDITO_CREDIARIO = configuredLimit;
+      const cliente = await createCliente();
+      const expectedLimit = configuredLimit === "275.50" ? 275.5 : 0;
+      assert.equal(Number(cliente.crediario.limiteCredito), expectedLimit);
+      assert.equal(Number(cliente.crediario.limiteDisponivel), expectedLimit);
+    }
+  } finally {
+    process.env.EXPOSICAO_CREDITO_CREDIARIO = originalLimit;
+  }
 });
 
 test("não persiste cadastro com endereço inválido e rejeita alterações indevidas", async () => {
   const cpf = nextCpf();
+  const initialCredits = await prisma.crediario.count();
   for (const body of [{ nome: "Teste", cpf, enderecos: [endereco, { ...endereco, cep: "x" }] },
     { nome: "Teste", cpf, crediario: { create: { limiteCredito: 999 } } },
     { nome: "Teste", cpf, email: "inválido" }, { nome: "Teste", cpf, idade: -1 }]) {
     assert.equal((await request("/clientes", { method: "POST", body })).status, 400);
   }
   assert.equal(await prisma.cliente.count({ where: { cpf } }), 0);
+  assert.equal(await prisma.crediario.count(), initialCredits);
 });
 
 test("impede CPF duplicado, inclusive máscara antiga e requisições simultâneas", async () => {
@@ -102,6 +131,7 @@ test("impede CPF duplicado, inclusive máscara antiga e requisições simultâne
   const simultaneous = await Promise.all([cpf, formatted].map((value) => request("/clientes", { method: "POST", body: { nome: "Concorrente", cpf: value } })));
   assert.deepEqual(simultaneous.map((result) => result.status).sort(), [201, 409]);
   assert.equal(await prisma.cliente.count({ where: { cpf } }), 1);
+  assert.equal(await prisma.crediario.count({ where: { cliente: { cpf } } }), 1);
   const legacyCpf = nextCpf();
   await prisma.cliente.create({ data: { nome: "Legado", cpf: legacyCpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4") } });
   assert.equal((await request("/clientes", { method: "POST", body: { nome: "Duplicado", cpf: legacyCpf } })).status, 409);
@@ -116,6 +146,7 @@ test("edita parcialmente, limpa opcionais e impede CPF de outro cliente", async 
   assert.equal(result.data.email, null);
   assert.equal(result.data.telefone, null);
   assert.equal(result.data.cpf, cliente.cpf);
+  assert.deepEqual(result.data.crediario, cliente.crediario);
   assert.equal((await request(`/clientes/${cliente.id}`, { method: "PUT", body: { cpf: other.cpf } })).status, 409);
   for (const body of [{}, { id: other.id }, { enderecos: [] }, { compras: { deleteMany: {} } }]) {
     assert.equal((await request(`/clientes/${cliente.id}`, { method: "PUT", body })).status, 400);
@@ -176,27 +207,168 @@ test("detalha histórico com itens, produtos, parcelas e crediário; protege ví
   assert.deepEqual(history.data.map((entry) => entry.id), [recent.id, compra.id]);
   assert.equal(history.data[1].itens[0].variacao.produto.nome, "Vestido de teste");
   assert.deepEqual(history.data[1].parcelas.map((entry) => entry.numero), [1, 2]);
-  assert.equal((await request(`/clientes/${cliente.id}`, { method: "DELETE" })).status, 409);
+  const comDivida = await request(`/clientes/${cliente.id}`, { method: "DELETE" });
+  assert.equal(comDivida.status, 409);
+  assert.match(comDivida.data.error, /parcelas em aberto/);
   assert.equal(await prisma.enderecoCliente.count({ where: { clienteId: cliente.id } }), 1);
   const detail = await request(`/clientes/${cliente.id}`);
   assert.equal(detail.data.crediario.status, "ATIVO");
   assert.deepEqual((await request(`/clientes/${cliente.id}`)).data.compras, history.data);
-  // Compra quitada também preserva o cadastro, mas com mensagem diferente da dívida em aberto.
+  
   await prisma.parcela.updateMany({ where: { compraId: compra.id }, data: { status: "PAGA" } });
   const quitado = await request(`/clientes/${cliente.id}`, { method: "DELETE" });
   assert.equal(quitado.status, 409);
   assert.match(quitado.data.error, /compras registradas/);
+  assert.equal((await request(`/clientes/${cliente.id}`)).status, 200);
+  assert.equal(await prisma.crediario.count({ where: { clienteId: cliente.id } }), 1);
+  assert.equal(await prisma.enderecoCliente.count({ where: { clienteId: cliente.id } }), 1);
 });
 
-test("exclui cadastro sem vínculos financeiros e seus endereços", async () => {
+test("exclui cliente sem compras junto com o crediário automático e os endereços", async () => {
   const cliente = await createCliente({ enderecos: [endereco] });
+  assert.equal(cliente.crediario.clienteId, cliente.id);
+  assert.equal(cliente.enderecos.length, 1);
+  assert.equal(await prisma.compra.count({ where: { clienteId: cliente.id } }), 0);
+
+  const result = await request(`/clientes/${cliente.id}`, { method: "DELETE" });
+  assert.equal(result.status, 204);
+  assert.equal(result.data, null);
+  assert.equal(await prisma.cliente.count({ where: { id: cliente.id } }), 0);
+  assert.equal(await prisma.crediario.count({ where: { clienteId: cliente.id } }), 0);
+  assert.equal(await prisma.enderecoCliente.count({ where: { clienteId: cliente.id } }), 0);
+  assert.equal((await request(`/clientes/${cliente.id}`)).status, 404);
+  assert.equal((await request(`/crediarios/cliente/${cliente.id}`)).status, 404);
+  assert.equal((await request(`/clientes/${cliente.id}`, { method: "DELETE" })).status, 404);
+});
+
+test("exclui cadastro legado sem crediário ou compras e seus endereços", async () => {
+  
+  const cliente = await prisma.cliente.create({ data: {
+    nome: "Cliente legado", cpf: nextCpf(), enderecos: { create: endereco },
+  } });
   const result = await request(`/clientes/${cliente.id}`, { method: "DELETE" });
   assert.equal(result.status, 204);
   assert.equal(result.data, null);
   assert.equal(await prisma.enderecoCliente.count({ where: { clienteId: cliente.id } }), 0);
-  // O crediário sem uso sai junto com o cadastro.
   assert.equal(await prisma.crediario.count({ where: { clienteId: cliente.id } }), 0);
   assert.equal((await request(`/clientes/${cliente.id}`)).status, 404);
+});
+
+test("preserva compras de cliente legado mesmo sem crediário", async () => {
+  const cliente = await prisma.cliente.create({ data: { nome: "Cliente legado com compra", cpf: nextCpf() } });
+  await prisma.compra.create({ data: { clienteId: cliente.id, valorTotal: "10.00", formaPagamento: "PIX" } });
+  assert.equal((await request(`/clientes/${cliente.id}`, { method: "DELETE" })).status, 409);
+  assert.equal((await request(`/clientes/${cliente.id}`)).status, 200);
+});
+
+test("cliente cadastrado integra bloqueio, compra, parcelas, alteração de limite e baixa", async () => {
+  const cliente = await createCliente();
+  const creditoId = cliente.crediario.id;
+  const produto = await prisma.produto.create({ data: {
+    nome: "Produto para integração de crediário", precoCusto: "50.00", precoVenda: "75.00",
+    fornecedor: { create: { nomeRazaoSocial: "Fornecedor integração de crediário", cnpj: "teste-fluxo-crediario" } },
+    variacoes: { create: { cor: "Verde", tamanho: "M", estoqueAtual: 10 } },
+  }, include: { variacoes: true } });
+  const variacaoId = produto.variacoes[0].id;
+  const pedido = {
+    clienteId: cliente.id, formaPagamento: "crediario", numeroParcelas: 2,
+    itens: [{ variacaoId, quantidade: 2, precoUnitario: "75.00" }],
+  };
+
+  assert.equal((await request(`/crediarios/${creditoId}/bloqueio/true`, { method: "POST" })).status, 200);
+  const blocked = await request("/compras", { method: "POST", body: pedido });
+  assert.equal(blocked.status, 400);
+  assert.match(blocked.data.erro, /bloqueado/);
+  assert.equal((await request(`/clientes/${cliente.id}`)).data.crediario.status, "BLOQUEADO");
+  assert.equal((await request(`/crediarios/${creditoId}/bloqueio/false`, { method: "POST" })).status, 200);
+
+  const overLimit = await request("/compras", { method: "POST", body: {
+    ...pedido, itens: [{ variacaoId, quantidade: 3, precoUnitario: "75.00" }],
+  } });
+  assert.equal(overLimit.status, 400);
+  assert.match(overLimit.data.erro, /insuficiente/);
+  assert.equal(await prisma.compra.count({ where: { clienteId: cliente.id } }), 0);
+  assert.equal((await prisma.variacao.findUnique({ where: { id: variacaoId } })).estoqueAtual, 10);
+  assert.equal(await prisma.movimentacaoEstoque.count({ where: { variacaoId } }), 0);
+
+  const compra = await request("/compras", { method: "POST", body: pedido });
+  assert.equal(compra.status, 201, JSON.stringify(compra.data));
+  assert.equal(Number(compra.data.valorTotal), 150);
+  const parcelas = [...compra.data.parcelas].sort((a, b) => a.numero - b.numero);
+  assert.deepEqual(parcelas.map((parcela) => Number(parcela.valor)), [75, 75]);
+  assert.equal((await prisma.variacao.findUnique({ where: { id: variacaoId } })).estoqueAtual, 8);
+  assert.equal(Number((await request(`/clientes/${cliente.id}`)).data.crediario.limiteDisponivel), 0);
+  assert.equal((await request(`/clientes/${cliente.id}/compras`)).data[0].id, compra.data.id);
+  const listed = await request("/parcelas?status=PENDENTE");
+  assert.equal(listed.status, 200);
+  assert.equal(listed.data.filter((parcela) => parcela.compra.cliente.id === cliente.id).length, 2);
+  assert.deepEqual((await request(`/clientes/${cliente.id}/debitos?dias=90`)).data, {
+    totalPendente: 150, totalAtraso: 0, totalPago: 0, qtdParcelasAtrasadas: 0,
+  });
+
+  const payment = await request(`/parcelas/baixa/${parcelas[0].id}`, { method: "PUT" });
+  assert.equal(payment.status, 200, JSON.stringify(payment.data));
+  assert.equal(payment.data.parcela.status, "PAGA");
+  assert.equal(Number((await request(`/clientes/${cliente.id}`)).data.crediario.limiteDisponivel), 75);
+  assert.deepEqual((await request(`/clientes/${cliente.id}/debitos?dias=90`)).data, {
+    totalPendente: 75, totalAtraso: 0, totalPago: 75, qtdParcelasAtrasadas: 0,
+  });
+
+  const limite = await request(`/crediarios/${creditoId}/limite?valorLimite=300&motivo=Teste`, { method: "POST" });
+  assert.equal(limite.status, 200, JSON.stringify(limite.data));
+  assert.equal(Number(limite.data.limiteCredito), 300);
+  assert.equal(Number(limite.data.limiteDisponivel), 225);
+  const edited = await request(`/clientes/${cliente.id}`, { method: "PUT", body: { nome: "Nome atualizado durante o crediário" } });
+  assert.equal(edited.status, 200);
+  assert.deepEqual(edited.data.crediario, limite.data);
+  const historicoLimite = await prisma.historicoLimiteCrediarioCliente.findMany({ where: { clienteId: cliente.id } });
+  assert.equal(historicoLimite.length, 1);
+  assert.equal(Number(historicoLimite[0].limiteAnterior), 150);
+  assert.equal(Number(historicoLimite[0].limiteFinal), 300);
+
+  assert.equal((await request(`/parcelas/baixa/${parcelas[1].id}`, { method: "PUT" })).status, 200);
+  assert.equal((await request(`/parcelas/baixa/${parcelas[0].id}`, { method: "PUT" })).status, 400);
+  const finalCredit = await request(`/crediarios/cliente/${cliente.id}`);
+  assert.equal(Number(finalCredit.data.limiteDisponivel), 300);
+  assert.equal((await request(`/clientes/${cliente.id}`, { method: "DELETE" })).status, 409);
+});
+
+test("mantém os totais de débitos por cliente, o cálculo de atraso e o horizonte de dias", async () => {
+  const cliente = await createCliente();
+  const other = await createCliente();
+  const dateInDays = (days) => {
+    const date = new Date();
+    date.setDate(date.getDate() + days);
+    return date;
+  };
+  await prisma.compra.create({ data: {
+    clienteId: cliente.id, valorTotal: "100.00", formaPagamento: "CREDIARIO",
+    parcelas: { create: [
+      { numero: 1, valor: "40.00", dataVencimento: dateInDays(-2), status: "PENDENTE" },
+      { numero: 2, valor: "10.00", dataVencimento: dateInDays(-5), status: "PAGA" },
+      { numero: 3, valor: "30.00", dataVencimento: dateInDays(7), status: "PENDENTE" },
+      { numero: 4, valor: "20.00", dataVencimento: dateInDays(45), status: "PENDENTE" },
+    ] },
+  } });
+  await prisma.compra.create({ data: {
+    clienteId: other.id, valorTotal: "999.00", formaPagamento: "CREDIARIO",
+    parcelas: { create: { numero: 1, valor: "999.00", dataVencimento: dateInDays(-1) } },
+  } });
+  for (const query of ["", "?dias=0", "?dias=30"]) {
+    const result = await request(`/clientes/${cliente.id}/debitos${query}`);
+    assert.equal(result.status, 200);
+    assert.deepEqual(result.data, { totalPendente: 30, totalAtraso: 40, totalPago: 10, qtdParcelasAtrasadas: 1 });
+  }
+  assert.deepEqual((await request(`/clientes/${cliente.id}/debitos?dias=60`)).data, {
+    totalPendente: 50, totalAtraso: 40, totalPago: 10, qtdParcelasAtrasadas: 1,
+  });
+  assert.deepEqual((await request(`/clientes/${cliente.id}/debitos?dias=3`)).data, {
+    totalPendente: 0, totalAtraso: 40, totalPago: 10, qtdParcelasAtrasadas: 1,
+  });
+  const empty = await createCliente();
+  assert.deepEqual((await request(`/clientes/${empty.id}/debitos`)).data, {
+    totalPendente: 0, totalAtraso: 0, totalPago: 0, qtdParcelasAtrasadas: 0,
+  });
 });
 
 test("retorna JSON e status adequados para IDs inválidos, inexistentes e JSON malformado", async () => {
@@ -204,7 +376,13 @@ test("retorna JSON e status adequados para IDs inválidos, inexistentes e JSON m
     const result = await request(`/clientes/${id}`);
     assert.equal(result.status, 400);
     assert.equal(typeof result.data.error, "string");
+    const debitos = await request(`/clientes/${id}/debitos`);
+    assert.equal(debitos.status, 400);
+    assert.equal(typeof debitos.data.error, "string");
   }
+  const missingDebits = await request("/clientes/2147483647/debitos");
+  assert.equal(missingDebits.status, 404);
+  assert.equal(typeof missingDebits.data.erro, "string");
   for (const path of ["/clientes/2147483647", "/clientes/2147483647/compras", "/clientes/2147483647/enderecos"]) {
     assert.equal((await request(path)).status, 404);
   }
