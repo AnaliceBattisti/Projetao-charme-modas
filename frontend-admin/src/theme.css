@@ -28,6 +28,9 @@
   --cm-sidebar-text: #c9a8be;
   --cm-sidebar-text-active: #ffffff;
   --cm-sidebar-hover-bg: rgba(255, 255, 255, 0.08);
+
+  --cm-text-error: #B54747;
+  --cm-text-warning: #B7791F;
 }
 
 * {
@@ -156,6 +159,18 @@ a {
   font-size: 0.85rem;
 }
 
+.cm-text-highlight{
+  color: var(--cm-vinho)
+}
+
+.cm-text-error{
+  color: var(--cm-text-error);
+}
+
+.cm-text-warning{
+  color: var(--cm-text-warning);
+}
+
 .cm-inline-form {
   display: flex;
   flex-wrap: wrap;
@@ -185,7 +200,7 @@ a {
   color: var(--cm-plum-light);
   cursor: pointer;
   font-size: 0.85rem;
-  text-decoration: underline;
+  text-decoration: none;
   padding: 0;
 }
 
@@ -332,6 +347,11 @@ a {
 
 .cm-button-pill:hover {
   background: var(--cm-accent-dark);
+}
+
+.cm-button-pill:disabled  {
+  background: var(--cm-text-muted);
+  cursor: not-allowed;
 }
 
 .cm-button-outline {

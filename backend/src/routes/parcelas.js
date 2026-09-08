@@ -3,53 +3,102 @@ import { prisma } from "../lib/prisma.js";
 
 const router = Router();
 
-//TODO: Melhorar com Ts
-const PARCELAS_ENUM = ['PENDENTE', 'PAGA','ATRASADA']
-
 router.get("/", async (req, res) => {
-    const params = req.query;
+    const ateDias = Number(req.query.dias);
+    const hoje = new Date();
 
-    if(params.status && !PARCELAS_ENUM.includes(params.status)){
-      return res.status(400).json({ erro: `Status inválido, campo deve ser um dos possiveis: ${PARCELAS_ENUM.join(',')}` });
+    if(ateDias && Number.isNaN(ateDias)){
+      return res.status(400).json({ erro: `ateDias inválido, campo deve ser uma data válida` });
     }
 
-    if(params.dataInicio && Number.isNaN(new Date(params.dataInicio).getTime())){
-      return res.status(400).json({ erro: `dataInicio inválido, campo deve ser uma data válida` });
-    }
+    const ateDate = new Date()
+    ateDate.setDate(hoje.getDate()+( ateDias || 30))
 
-    if(params.dataFim && Number.isNaN(new Date(params.dataFim).getTime())){
-      return res.status(400).json({ erro: `dataFim inválido, campo deve ser uma data válida` });
-    }
-
-    const statusFilter = params.status ? { status: { equals: params.status } } : {};
-    const dataInicioFilter = params.dataInicio ? { dataVencimento: { gte: new Date(params.dataInicio) } } : {};
-    const dataFimFilter = params.dataFim ? { dataVencimento: { lte: new Date(params.dataFim) } } : {};
-
-    const parcelas = await prisma.parcela.findMany({
+    const comprasComPendencias = await prisma.compra.findMany({
         where: {
-            ...statusFilter,
-            ...dataInicioFilter,
-            ...dataFimFilter
+          parcelas:{
+            some: {
+              status: { not: 'PAGA' },
+              dataVencimento: { lte: ateDate}
+            }
+          }
         },
         include: {
-            compra: {
-                select: {
-                    id: true,
-                    cliente: {
-                        select: {
-                            id: true,
-                            nome: true,
-                            cpf: true,
-                            telefone: true
-                        }
-                    }
-                }
+          _count: {
+            select: {
+              parcelas: true
             }
+          },
+          cliente: {
+            select: {
+              id: true,
+              nome: true,
+              cpf: true,
+              telefone: true
+            }
+          },
+          parcelas: {
+            where: {
+              status: { not: 'PAGA' },
+              dataVencimento: { lte: ateDate }
+            },
+            orderBy: {
+              numero: 'asc'
+            }
+          }
         },
-        orderBy: { dataVencimento: 'asc' }
+        orderBy: { data: 'desc' }
     })
 
-    return res.json(parcelas);
+    let totalAReceber = 0;
+    let totalEmAtraso = 0;
+    let totalAVencer = 0;
+    const clientesUnicosIds = new Set();
+
+    const ultimasParcelasPendentes = comprasComPendencias.map((compra) => {
+      const proximaParcela = compra.parcelas[0];
+      const valorNum = Number(proximaParcela.valor);
+      const dataVenc = new Date(proximaParcela.dataVencimento);
+
+      let statusCalculado = proximaParcela.status;
+
+      totalAReceber += valorNum;
+
+      if (dataVenc < hoje) {
+        statusCalculado = 'ATRASADA';
+        totalEmAtraso += valorNum;
+      }else{
+        totalAVencer += valorNum;
+      }
+
+      clientesUnicosIds.add(compra.cliente.id);
+
+      return {
+        compraId: compra.id,
+        dataCompra: compra.data,
+        formaPagamento: compra.formaPagamento,
+        cliente: compra.cliente,
+        parcela: {
+          id: proximaParcela.id,
+          numero: proximaParcela.numero,
+          totalParcelas: compra._count.parcelas,
+          valor: valorNum,
+          dataVencimento: proximaParcela.dataVencimento,
+          status: statusCalculado
+        }
+      };
+    });
+
+    return res.json({
+      resumo: {
+        totalAReceber: Number(totalAReceber.toFixed(2)),
+        totalAVencer: Number(totalAVencer.toFixed(2)),
+        totalEmAtraso: Number(totalEmAtraso.toFixed(2)),
+        totalRegistros: ultimasParcelasPendentes.length,
+        totalClientesUnicos: clientesUnicosIds.size
+      },
+      dados: ultimasParcelasPendentes
+    });
 });
 
 router.put('/baixa/:id', async (req, res) => {
