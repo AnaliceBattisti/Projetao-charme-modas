@@ -2,14 +2,16 @@ import { Link } from "react-router-dom";
 import { imagemUrl } from "../api.js";
 import { useLoja } from "../estado.jsx";
 import { formatarPreco } from "../format.js";
-import { capaDe, estoqueDe } from "../produtos.js";
+import { capaDe, ehNovidade, estoqueDe } from "../produtos.js";
 import { IconeCoracao } from "../icons.jsx";
 
-export default function ProdutoCard({ produto, selo }) {
+export default function ProdutoCard({ produto }) {
   const { ehFavorito, alternarFavorito } = useLoja();
   const capa = imagemUrl(capaDe(produto));
   const esgotado = estoqueDe(produto) <= 0;
   const favorito = ehFavorito(produto.id);
+  // O selo sai da data de cadastro do produto, não é decoração fixa.
+  const selo = ehNovidade(produto) ? "NOVO" : null;
 
   return (
     <article className="cm-card">
