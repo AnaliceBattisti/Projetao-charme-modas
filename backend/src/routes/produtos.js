@@ -26,6 +26,7 @@ const upload = multer({
 router.get("/", async (req, res) => {
   const produtos = await prisma.produto.findMany({
     include: { fornecedor: true, variacoes: true },
+    orderBy: { criadoEm: "desc" },
   });
   res.json(produtos);
 });

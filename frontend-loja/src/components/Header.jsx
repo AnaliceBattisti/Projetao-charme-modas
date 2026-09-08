@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useLoja } from "../estado.jsx";
 import { IconeBusca, IconeCoracao, IconeMenu, IconeSacola, IconeUsuario } from "../icons.jsx";
@@ -5,6 +6,15 @@ import { IconeBusca, IconeCoracao, IconeMenu, IconeSacola, IconeUsuario } from "
 export default function Header({ onAbrirMenu }) {
   const { quantidadeTotal, favoritos } = useLoja();
   const navigate = useNavigate();
+  const [buscaAberta, setBuscaAberta] = useState(false);
+  const [termo, setTermo] = useState("");
+
+  function buscar(evento) {
+    evento.preventDefault();
+    const limpo = termo.trim();
+    navigate(limpo ? `/catalogo?busca=${encodeURIComponent(limpo)}` : "/catalogo");
+    setBuscaAberta(false);
+  }
 
   return (
     <header className="cm-header">
@@ -22,13 +32,26 @@ export default function Header({ onAbrirMenu }) {
         </button>
 
         <div className="cm-header-acoes">
-          <button
-            className="cm-icone-botao"
-            onClick={() => navigate("/catalogo")}
-            aria-label="Buscar produtos"
-          >
-            <IconeBusca />
-          </button>
+          {buscaAberta ? (
+            <form className="cm-header-busca" onSubmit={buscar}>
+              <IconeBusca />
+              <input
+                autoFocus
+                placeholder="Buscar por vestido, blusa, calça..."
+                value={termo}
+                onChange={(e) => setTermo(e.target.value)}
+                onBlur={() => !termo && setBuscaAberta(false)}
+              />
+            </form>
+          ) : (
+            <button
+              className="cm-icone-botao"
+              onClick={() => setBuscaAberta(true)}
+              aria-label="Buscar produtos"
+            >
+              <IconeBusca />
+            </button>
+          )}
           <button
             className="cm-icone-botao"
             onClick={() => navigate("/favoritos")}

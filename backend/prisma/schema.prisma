@@ -46,6 +46,8 @@ model Produto {
   categoria     String?
   precoCusto    Decimal  @db.Decimal(10, 2)
   precoVenda    Decimal  @db.Decimal(10, 2)
+  // Usado pela vitrine pra ordenar "Novidades" e marcar o selo NOVO.
+  criadoEm      DateTime @default(now())
 
   fornecedor    Fornecedor @relation(fields: [fornecedorId], references: [id])
   variacoes     Variacao[]

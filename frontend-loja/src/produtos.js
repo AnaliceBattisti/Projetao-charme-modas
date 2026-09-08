@@ -38,6 +38,16 @@ export function capaDe(produto) {
   return produto.variacoes.find((v) => v.imagemUrl)?.imagemUrl ?? null;
 }
 
+export const DIAS_PARA_SER_NOVIDADE = 30;
+
+/** Produto cadastrado recentemente — usado no selo NOVO e na aba Novidades. */
+export function ehNovidade(produto) {
+  if (!produto.criadoEm) return false;
+  const limite = new Date();
+  limite.setDate(limite.getDate() - DIAS_PARA_SER_NOVIDADE);
+  return new Date(produto.criadoEm) >= limite;
+}
+
 /** Listas de filtro derivadas do que existe cadastrado, sem lista fixa no código. */
 export function categoriasDe(produtos) {
   return [...new Set(produtos.map((p) => p.categoria).filter(Boolean))].sort();

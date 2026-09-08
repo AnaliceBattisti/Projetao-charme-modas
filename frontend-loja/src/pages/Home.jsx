@@ -44,8 +44,8 @@ export default function Home() {
           <div className="cm-vazio">Nenhuma peça cadastrada ainda.</div>
         ) : (
           <div className="cm-grade">
-            {destaques.map((produto, indice) => (
-              <ProdutoCard key={produto.id} produto={produto} selo={indice < 2 ? "NOVO" : null} />
+            {destaques.map((produto) => (
+              <ProdutoCard key={produto.id} produto={produto} />
             ))}
           </div>
         )}

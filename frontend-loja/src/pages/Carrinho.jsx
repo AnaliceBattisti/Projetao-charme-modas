@@ -2,9 +2,13 @@ import { Link } from "react-router-dom";
 import { imagemUrl } from "../api.js";
 import { useLoja } from "../estado.jsx";
 import { formatarPreco } from "../format.js";
+import { calcularFrete, faltaParaFreteGratis } from "../frete.js";
 
 export default function Carrinho() {
   const { itens, subtotal, alterarQuantidade, remover } = useLoja();
+  const frete = calcularFrete(subtotal);
+  const falta = faltaParaFreteGratis(subtotal);
+  const total = subtotal + frete;
 
   if (itens.length === 0) {
     return (
@@ -86,11 +90,16 @@ export default function Carrinho() {
           </div>
           <div className="cm-resumo-linha">
             <span>Frete</span>
-            <span>Calcular no checkout</span>
+            <span>{frete === 0 ? "Grátis" : formatarPreco(frete)}</span>
           </div>
+          {falta > 0 && (
+            <p className="cm-aviso-frete">
+              Faltam {formatarPreco(falta)} para o frete sair de graça.
+            </p>
+          )}
           <div className="cm-resumo-total">
             <span>Total</span>
-            <span className="cm-preco">{formatarPreco(subtotal)}</span>
+            <span className="cm-preco">{formatarPreco(total)}</span>
           </div>
           <div className="cm-resumo-acoes">
             <Link to="/checkout">
