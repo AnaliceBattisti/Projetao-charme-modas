@@ -10,6 +10,8 @@ import Clientes from "./pages/Clientes.jsx";
 import Crediario from "./pages/Crediario.jsx";
 import Compras from "./pages/Compras.jsx";
 import Configuracoes from "./pages/Configuracoes.jsx";
+import ContasReceber from "./pages/ContasReceber.jsx";
+import NovaCompra from "./pages/NovaCompra.jsx";
 
 export default function App() {
   return (
@@ -29,7 +31,9 @@ export default function App() {
           <Route path="/fornecedores" element={<Fornecedores />} />
           <Route path="/clientes" element={<Clientes />} />
           <Route path="/crediario" element={<Crediario />} />
+          <Route path="/contas-receber" element={<ContasReceber />} />
           <Route path="/compras" element={<Compras />} />
+          <Route path="/compras/nova-compra" element={<NovaCompra />} />
           <Route path="/configuracoes" element={<Configuracoes />} />
         </Route>
       </Routes>

@@ -10,6 +10,7 @@ import {
   IconCart,
   IconGear,
   IconLogout,
+  IconDollarSign
 } from "../icons.jsx";
 
 const links = [
@@ -19,6 +20,7 @@ const links = [
   { to: "/fornecedores", label: "Fornecedores", Icon: IconTruck },
   { to: "/clientes", label: "Clientes", Icon: IconUsers },
   { to: "/crediario", label: "Crediário", Icon: IconCard },
+  { to: "/contas-receber", label: "Contas a receber", Icon: IconDollarSign },
   { to: "/compras", label: "Compras / Vendas", Icon: IconCart },
   { to: "/configuracoes", label: "Configurações", Icon: IconGear },
 ];

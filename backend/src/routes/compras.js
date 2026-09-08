@@ -4,11 +4,38 @@ import { prisma } from "../lib/prisma.js";
 const router = Router();
 
 router.get("/", async (req, res) => {
-  const compras = await prisma.compra.findMany({
-    include: { cliente: true, itens: true, parcelas: true },
-    orderBy: { data: "desc" },
-  });
-  res.json(compras);
+  try {
+    const { busca, status } = req.query;
+
+    const where = {};
+
+    if (status && status !== "TODOS") {
+      where.status = status;
+    }
+
+    if (busca) {
+      where.cliente = {
+        OR: [
+          { nome: { contains: busca, mode: "insensitive" } },
+          { cpf: { contains: busca, mode: "insensitive" } },
+        ],
+      };
+    }
+
+    const compras = await prisma.compra.findMany({
+      where,
+      include: {
+        cliente: true,
+        itens: true
+      },
+      orderBy: { data: "desc" },
+    });
+
+    res.json(compras);
+  } catch (error) {
+    console.error("Erro ao buscar compras:", error);
+    res.status(500).json({ error: "Erro ao buscar compras." });
+  }
 });
 
 router.get("/:id", async (req, res) => {
