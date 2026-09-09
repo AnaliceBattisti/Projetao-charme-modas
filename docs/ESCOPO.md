@@ -10,7 +10,7 @@ O escopo inicial (definido em documento compartilhado pela equipe) cobria tanto 
 
 Motivo: a parte de pagamento (integração tipo Stripe, ligar checkout ao estoque) foi identificada como a mais arriscada e trabalhosa dado o prazo, então o grupo optou por garantir primeiro um backoffice funcional (CRUD completo) e deixar loja pública/pagamento como extensão, só se sobrar tempo.
 
-### Em escopo agora (painel administrativo / backoffice)
+### Em escopo agora
 
 - Cadastro e gestão de **fornecedores**
 - Cadastro de **produtos** e suas **variações** (cor, tamanho, SKU)
@@ -19,10 +19,12 @@ Motivo: a parte de pagamento (integração tipo Stripe, ligar checkout ao estoqu
 - **Crediário**: limite de crédito, status (ativo/bloqueado), parcelas
 - Registro de **compras/vendas** feitas na loja física (não é checkout de e-commerce — é o funcionário registrando uma venda já feita no balcão)
 - Painel administrativo com login, dashboard com indicadores
+- Estrutura das páginas do e-commerce, responsividade, busca/filtros, sacola e favoritos locais
 
 ### Fora de escopo por enquanto (fica pra depois, se sobrar tempo)
 
-- E-commerce público (catálogo navegável por clientes, carrinho, checkout online)
+- Checkout público com pedidos reais e acompanhamento de pedidos pela conta
+- Recuperação de senha, verificação de e-mail e autenticação real do painel administrativo
 - Integração de pagamento online (ex.: Stripe)
 
 ## Divisão de responsabilidades proposta pelo grupo
@@ -30,11 +32,11 @@ Motivo: a parte de pagamento (integração tipo Stripe, ligar checkout ao estoqu
 A equipe dividiu o trabalho em quatro frentes (a numeração é só organizacional, não é obrigatoriamente uma pessoa fixa por frente):
 
 1. **Back-end e banco de dados** — produtos, estoque, fornecedores, clientes, crediário
-2. **Front-end do site de vendas** — catálogo, carrinho, checkout *(em espera, é a parte de e-commerce fora do escopo atual)*
+2. **Front-end do site de vendas** — catálogo integrado, carrinho e contas implementados; checkout pendente
 3. **Pagamento e integrações** *(em espera, mesma razão)*
 4. **Painel administrativo e crediário** — telas do backoffice, gestão de pagamentos do crediário, bloqueio de cliente inadimplente
 
-Como o e-commerce e o pagamento saíram do escopo imediato, o esforço do grupo está concentrado nas frentes 1 e 4.
+A priorização inicial concentrou o esforço nas frentes 1 e 4. A estrutura da frente 2 foi retomada em 08/09/2026; pagamentos permanecem para uma etapa posterior.
 
 ## Telas do painel administrativo
 
@@ -53,10 +55,13 @@ Definidas junto com a identidade visual da marca (paleta lilás/vinho, baseada n
 
 ## Status de implementação
 
+**Loja virtual:** início, catálogo integrado, produto, carrinho, favoritos, menu, contato e contas. Cadastro cria usuário com senha protegida e cliente vinculado; login mantém uma sessão validada no backend. A conta permite editar dados pessoais e endereços. Checkout e acompanhamento de pedidos pela conta continuam pendentes.
+
 Ver o `README.md` na raiz do repositório pra instruções de como rodar o projeto. Resumo do que já está funcional vs. pendente:
 
 **Funcional (front conectado ao back):**
-- Login (guard de rota; autenticação real ainda pendente)
+- Cadastro e login de clientes da loja, sessão e logout
+- Login do painel 
 - Produtos (CRUD + variações)
 - Fornecedores (CRUD)
 - Estoque (situação + movimentações)
@@ -64,8 +69,5 @@ Ver o `README.md` na raiz do repositório pra instruções de como rodar o proje
 **Backend pronto, front ainda é placeholder:**
 - Clientes
 - Crediário
-
-**Incompleto dos dois lados:**
-- Compras/Vendas — cria a compra e os itens, mas ainda falta dar baixa automática no estoque e gerar as parcelas quando for crediário (ver TODO em `backend/src/routes/compras.js`)
 
 Mais detalhes técnicos em [ARQUITETURA.md](./ARQUITETURA.md) e [BANCO_DE_DADOS.md](./BANCO_DE_DADOS.md).

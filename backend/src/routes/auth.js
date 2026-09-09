@@ -1,0 +1,232 @@
+import { Router, json } from "express";
+import cors from "cors";
+import { prisma } from "../lib/prisma.js";
+import { gerarSenhaHash, verificarSenha } from "../lib/senhas.js";
+import {
+  encerrarSessao,
+  iniciarSessao,
+  selecionarUsuario,
+} from "../lib/sessoes.js";
+import { limitarTentativas } from "../middleware/limitarTentativas.js";
+import { exigirConta } from "../middleware/exigirConta.js";
+import { validarCadastro, validarLogin } from "../validation/auth.js";
+import {
+  cpfFormats,
+  validateCliente,
+  validateEndereco,
+  validateId,
+  ValidationError,
+} from "../validation/clientes.js";
+
+const router = Router();
+const asyncRoute = (handler) => (req, res, next) =>
+  Promise.resolve(handler(req, res, next)).catch(next);
+const origens = new Set(
+  (
+    process.env.LOJA_ORIGENS ||
+    "http://localhost:5174,http://127.0.0.1:5174,http://localhost:4174,http://127.0.0.1:4174"
+  )
+    .split(",")
+    .map((valor) => valor.trim()),
+);
+
+router.use((req, res, next) => {
+  res.set("Cache-Control", "no-store");
+  if (req.headers.origin && !origens.has(req.headers.origin)) {
+    return res.status(403).json({ error: "Origem não autorizada." });
+  }
+  if (
+    ["POST", "PUT", "PATCH"].includes(req.method) &&
+    !req.is("application/json")
+  ) {
+    return res
+      .status(415)
+      .json({ error: "Envie Content-Type: application/json." });
+  }
+  next();
+});
+router.use(
+  cors({
+    origin: (origem, callback) =>
+      callback(null, Boolean(origem && origens.has(origem))),
+    credentials: true,
+  }),
+);
+router.use(json({ limit: "32kb" }));
+
+router.post(
+  "/cadastro",
+  limitarTentativas(),
+  asyncRoute(async (req, res) => {
+    const { cliente, senha } = validarCadastro(req.body);
+    const [usuarioExistente, clienteExistente] = await Promise.all([
+      prisma.usuario.findFirst({
+        where: { email: { equals: cliente.email, mode: "insensitive" } },
+        select: { id: true },
+      }),
+      prisma.cliente.findFirst({
+        where: { cpf: { in: cpfFormats(cliente.cpf) } },
+        select: { id: true },
+      }),
+    ]);
+    if (usuarioExistente || clienteExistente) {
+      return res.status(409).json({
+        error:
+          "E-mail ou CPF já cadastrado. Entre na sua conta ou fale com a loja para vincular um cadastro existente.",
+      });
+    }
+    const senhaHash = await gerarSenhaHash(senha);
+    const limiteInicial = Number(process.env.EXPOSICAO_CREDITO_CREDIARIO) || 0;
+    // O nested create do Prisma é atômico: usuário, cliente, endereços e crédito juntos.
+    const usuario = await prisma.usuario.create({
+      data: {
+        nome: cliente.nome,
+        email: cliente.email,
+        senhaHash,
+        papel: "CLIENTE",
+        cliente: {
+          create: {
+            ...cliente,
+            crediario: {
+              create: {
+                limiteCredito: limiteInicial,
+                limiteDisponivel: limiteInicial,
+              },
+            },
+          },
+        },
+      },
+      select: selecionarUsuario,
+    });
+    res.status(201).json({ usuario });
+  }),
+);
+
+router.post(
+  "/login",
+  limitarTentativas(),
+  asyncRoute(async (req, res) => {
+    const { email, senha } = validarLogin(req.body);
+    const usuario = await prisma.usuario.findFirst({
+      where: { email: { equals: email, mode: "insensitive" } },
+      select: { ...selecionarUsuario, senhaHash: true },
+    });
+    const senhaCorreta = await verificarSenha(senha, usuario?.senhaHash);
+    if (!senhaCorreta || usuario?.papel !== "CLIENTE" || !usuario.cliente) {
+      return res.status(401).json({ error: "E-mail ou senha inválidos." });
+    }
+    await iniciarSessao(req, res, usuario.id);
+    const { senhaHash, ...dadosPublicos } = usuario;
+    res.json({ usuario: dadosPublicos });
+  }),
+);
+
+// Toda operação da própria conta usa o vínculo da sessão, nunca um ID enviado pelo cliente.
+router.use("/me", exigirConta);
+router.get("/me", (req, res) => res.json({ usuario: req.usuario }));
+
+router.put(
+  "/me",
+  asyncRoute(async (req, res) => {
+    const dados = validateCliente(req.body, { partial: true });
+    if (Object.hasOwn(dados, "email")) {
+      throw new ValidationError("O e-mail não pode ser alterado pela edição da conta.");
+    }
+    if (
+      dados.cpf &&
+      (await prisma.cliente.findFirst({
+        where: {
+          cpf: { in: cpfFormats(dados.cpf) },
+          id: { not: req.usuario.clienteId },
+        },
+        select: { id: true },
+      }))
+    ) {
+      return res
+        .status(409)
+        .json({ error: "CPF já cadastrado para outro cliente." });
+    }
+    const usuario = await prisma.usuario.update({
+      where: {
+        id: req.usuario.id,
+        clienteId: req.usuario.clienteId,
+        papel: "CLIENTE",
+      },
+      data: {
+        ...(dados.nome !== undefined ? { nome: dados.nome } : {}),
+        cliente: { update: dados },
+      },
+      select: selecionarUsuario,
+    });
+    res.json({ usuario });
+  }),
+);
+
+router.post(
+  "/me/enderecos",
+  asyncRoute(async (req, res) => {
+    const dados = validateEndereco(req.body);
+    const endereco = await prisma.enderecoCliente.create({
+      data: { ...dados, clienteId: req.usuario.clienteId },
+    });
+    res.status(201).json(endereco);
+  }),
+);
+
+router.put(
+  "/me/enderecos/:enderecoId",
+  asyncRoute(async (req, res) => {
+    const id = validateId(req.params.enderecoId);
+    const dados = validateEndereco(req.body, { partial: true });
+    const endereco = await prisma.enderecoCliente.update({
+      where: { id, clienteId: req.usuario.clienteId },
+      data: dados,
+    });
+    res.json(endereco);
+  }),
+);
+
+router.delete(
+  "/me/enderecos/:enderecoId",
+  asyncRoute(async (req, res) => {
+    const id = validateId(req.params.enderecoId);
+    await prisma.enderecoCliente.delete({
+      where: { id, clienteId: req.usuario.clienteId },
+    });
+    res.status(204).send();
+  }),
+);
+
+router.post(
+  "/logout",
+  asyncRoute(async (req, res) => {
+    await encerrarSessao(req, res);
+    res.status(204).send();
+  }),
+);
+
+router.use((error, req, res, next) => {
+  if (error.type === "entity.parse.failed")
+    return res
+      .status(400)
+      .json({ error: "O corpo da requisição deve conter um JSON válido." });
+  if (error.type === "entity.too.large")
+    return res
+      .status(413)
+      .json({ error: "O corpo da requisição excede o tamanho permitido." });
+  if (error instanceof ValidationError)
+    return res.status(400).json({ error: error.message });
+  if (error.code === "P2002")
+    return res.status(409).json({ error: "E-mail ou CPF já cadastrado." });
+  if (error.code === "P2025")
+    return res
+      .status(404)
+      .json({ error: "Cadastro ou endereço não encontrado." });
+  // Não registrar corpo da requisição, credenciais ou argumentos de queries.
+  console.error("Falha no serviço de contas:", error.code || error.name);
+  res.status(500).json({
+    error: "Não foi possível acessar o serviço de contas. Tente novamente.",
+  });
+});
+
+export default router;

@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 export default function Footer() {
   return (
     <footer className="cm-rodape">
@@ -7,13 +9,13 @@ export default function Footer() {
           <p className="cm-rodape-slogan">Seu estilo, seu charme.</p>
         </div>
         <div className="cm-rodape-links">
-          <a href="#atendimento">Atendimento</a>
+          <Link to="/informacoes/trocas">Trocas</Link>
           <span>•</span>
-          <a href="#trocas">Trocas</a>
+          <Link to="/informacoes/privacidade">Privacidade</Link>
           <span>•</span>
-          <a href="#privacidade">Privacidade</a>
+          <Link to="/informacoes/termos">Termos</Link>
           <span>•</span>
-          <a href="#contato">Contato</a>
+          <Link to="/contato">Contato</Link>
         </div>
       </div>
     </footer>

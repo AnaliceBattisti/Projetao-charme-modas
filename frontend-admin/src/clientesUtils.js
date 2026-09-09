@@ -46,7 +46,7 @@ export function situacaoCredito(crediario, atrasado = false) {
 }
 
 export function parcelaAtrasada(parcela) {
-  return parcela.status !== "PAGA" && (parcela.status === "ATRASADA" || new Date(parcela.dataVencimento) < new Date());
+  return ["PENDENTE", "ATRASADA"].includes(parcela.status) && (parcela.status === "ATRASADA" || new Date(parcela.dataVencimento) < new Date());
 }
 
 export function resumirCompras(compras) {
