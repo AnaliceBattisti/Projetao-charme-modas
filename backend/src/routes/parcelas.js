@@ -18,7 +18,7 @@ router.get("/", async (req, res) => {
         where: {
           parcelas:{
             some: {
-              status: { not: 'PAGA' },
+              status: { notIn: ['PAGA','CANCELADA'] },
               dataVencimento: { lte: ateDate}
             }
           }

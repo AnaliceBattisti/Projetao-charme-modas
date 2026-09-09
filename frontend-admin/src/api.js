@@ -10,7 +10,7 @@ async function request(path, options, { rawBody = false } = {}) {
     throw new Error(body.error || body.erro || `Erro ${res.status} em ${path}`);
   }
   if (res.status === 204) return null;
-  return res.json();
+  return res.json().catch(()=>({}));
 }
 
 export const api = {

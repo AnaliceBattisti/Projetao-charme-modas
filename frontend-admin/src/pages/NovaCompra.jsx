@@ -30,8 +30,33 @@ export default function NovaCompra() {
 
   useEffect(() => {
     api.get("/clientes").then((data) => setClientes(Array.isArray(data) ? data : data.dados || []));
-    api.get("/produtos").then((data) => setProdutos(Array.isArray(data) ? data : data.dados || []));
+    api.get("/produtos").then((data) => {
+      const listaProdutos = Array.isArray(data) ? data : [];
+
+      const produtosComEstoque = listaProdutos.filter((prod) =>
+        prod.variacoes && prod.variacoes.some((v) => v.estoqueAtual > 0)
+      );
+
+      setProdutos(produtosComEstoque);
+    });
   }, []);
+
+  useEffect(()=>{
+    setErro(null);
+    const cliente = clientes.find(cliente => cliente.id == clienteId);
+    
+    if(cliente && cliente.crediario && formaPagamento==="CREDIARIO"){
+      if(cliente.crediario.status !== "ATIVO"){
+        setErro("Cliente com Crediário bloqueado.");
+        return;
+      }
+
+      const valorTotal = itens.reduce((acc, item) => acc + item.quantidade * item.precoUnitario, 0);
+      if(valorTotal > cliente.crediario.limiteDisponivel){
+        setErro("Cliente com limite insuficiente no Crediário");
+      }
+    }
+  }, [clienteId,itens,formaPagamento])
 
   const handleProdutoChange = (id) => {
     setProdutoSelecionadoId(id);
@@ -44,11 +69,14 @@ export default function NovaCompra() {
 
     const prod = produtos.find((p) => String(p.id) === String(id));
     if (prod) {
-      setVariacoesDisponiveis(prod.variacoes || []);
+      const variacoesComEstoque = (prod.variacoes || []).filter(
+        (v) => v.estoqueAtual > 0
+      );
+      setVariacoesDisponiveis(variacoesComEstoque);
       setQuantidade(1)
       setPrecoUnitario(prod.precoVenda || "");
-      if (prod.variacoes && prod.variacoes.length > 0) {
-        setVariacaoId(prod.variacoes[0].id);
+      if (variacoesComEstoque.length > 0) {
+        setVariacaoId(variacoesComEstoque[0].id);
       }
     }
   };
@@ -118,6 +146,7 @@ export default function NovaCompra() {
       clienteId: Number(clienteId),
       formaPagamento,
       numParcelas: formaPagamento === "CREDIARIO" ? Number(numParcelas) : 1,
+      origem: "backoffice",
       itens: itens.map((i) => ({
         variacaoId: i.variacaoId,
         quantidade: i.quantidade,

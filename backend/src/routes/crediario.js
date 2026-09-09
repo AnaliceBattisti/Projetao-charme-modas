@@ -5,7 +5,17 @@ import { Prisma } from "@prisma/client";
 const router = Router();
 
 router.get("/", async (req, res) => {
-  const crediarios = await prisma.crediario.findMany({ include: { cliente: true } });
+  const { busca } = req.query;
+  const where = {};
+  if (busca) {
+    where.cliente = {
+      OR: [
+        { nome: { contains: busca, mode: "insensitive" } },
+        { cpf: { contains: busca, mode: "insensitive" } },
+      ],
+    };
+  }
+  const crediarios = await prisma.crediario.findMany({ where, include: { cliente: true } });
   res.json(crediarios);
 });
 
@@ -48,21 +58,21 @@ router.post('/:id/bloqueio/:bloquear', async (req,res) => {
 
 router.post('/:id/limite', async (req,res)=>{
   const id = Number(req.params.id);
-  const params = req.query;
+  const body = req.body;
 
   if (isNaN(id)) {
     return res.status(400).json({ erro: 'ID do crediário inválido.' });
   }
 
-  if(!params.valorLimite || isNaN(Number(params.valorLimite))){
+  if(!body.valorLimite || isNaN(Number(body.valorLimite))){
     return res.status(400).json({ erro: 'Novo valor de limite inválido, valor deve ser numérico.' });
   }
 
-  if(!params.motivo || params.motivo === ''){
+  if(!body.motivo || body.motivo === ''){
     return res.status(400).json({ erro: 'Motivo de mudança no limite é obrigatório' });
   }
 
-  const {motivo, valorLimite} = params;
+  const {motivo, valorLimite} = body;
 
   try{
     const crediario = await prisma.$transaction(async (tx) => {

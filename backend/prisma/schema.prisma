@@ -192,4 +192,5 @@ enum StatusParcela {
   PENDENTE
   PAGA
   ATRASADA
+  CANCELADA
 }
