@@ -26,6 +26,8 @@ router.get("/", async (req, res) => {
       where,
       include: {
         cliente: true,
+        // O painel de clientes usa as parcelas para calcular pendências.
+        parcelas: true,
         itens: {
           include:{
             variacao:{

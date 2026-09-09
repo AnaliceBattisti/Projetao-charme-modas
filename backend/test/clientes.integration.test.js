@@ -299,9 +299,14 @@ test("cliente cadastrado integra bloqueio, compra, parcelas, alteração de limi
   assert.equal((await prisma.variacao.findUnique({ where: { id: variacaoId } })).estoqueAtual, 8);
   assert.equal(Number((await request(`/clientes/${cliente.id}`)).data.crediario.limiteDisponivel), 0);
   assert.equal((await request(`/clientes/${cliente.id}/compras`)).data[0].id, compra.data.id);
-  const listed = await request("/parcelas?status=PENDENTE");
+  const listed = await request("/parcelas?dias=90");
   assert.equal(listed.status, 200);
-  assert.equal(listed.data.filter((parcela) => parcela.compra.cliente.id === cliente.id).length, 2);
+  const pendencia = listed.data.dados.find((item) => item.cliente.id === cliente.id);
+  assert.equal(pendencia.compraId, compra.data.id);
+  assert.equal(pendencia.parcela.totalParcelas, 2);
+  assert.equal(pendencia.parcela.id, parcelas[0].id);
+  const comprasListadas = await request("/compras");
+  assert.equal(comprasListadas.data.find((item) => item.id === compra.data.id).parcelas.length, 2);
   assert.deepEqual((await request(`/clientes/${cliente.id}/debitos?dias=90`)).data, {
     totalPendente: 150, totalAtraso: 0, totalPago: 0, qtdParcelasAtrasadas: 0,
   });
@@ -314,7 +319,7 @@ test("cliente cadastrado integra bloqueio, compra, parcelas, alteração de limi
     totalPendente: 75, totalAtraso: 0, totalPago: 75, qtdParcelasAtrasadas: 0,
   });
 
-  const limite = await request(`/crediarios/${creditoId}/limite?valorLimite=300&motivo=Teste`, { method: "POST" });
+  const limite = await request(`/crediarios/${creditoId}/limite`, { method: "POST", body: { valorLimite: 300, motivo: "Teste" } });
   assert.equal(limite.status, 200, JSON.stringify(limite.data));
   assert.equal(Number(limite.data.limiteCredito), 300);
   assert.equal(Number(limite.data.limiteDisponivel), 225);
@@ -353,6 +358,14 @@ test("mantém os totais de débitos por cliente, o cálculo de atraso e o horizo
   await prisma.compra.create({ data: {
     clienteId: other.id, valorTotal: "999.00", formaPagamento: "CREDIARIO",
     parcelas: { create: { numero: 1, valor: "999.00", dataVencimento: dateInDays(-1) } },
+  } });
+  // O status trazido pelo módulo de vendas não pode virar dívida do cliente.
+  await prisma.compra.create({ data: {
+    clienteId: cliente.id, valorTotal: "80.00", formaPagamento: "CREDIARIO", status: "CANCELADA",
+    parcelas: { create: [
+      { numero: 1, valor: "40.00", dataVencimento: dateInDays(-1), status: "CANCELADA" },
+      { numero: 2, valor: "40.00", dataVencimento: dateInDays(10), status: "CANCELADA" },
+    ] },
   } });
   for (const query of ["", "?dias=0", "?dias=30"]) {
     const result = await request(`/clientes/${cliente.id}/debitos${query}`);

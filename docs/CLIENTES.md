@@ -2,6 +2,8 @@
 
 O módulo usa os campos do diagrama da equipe e acrescenta e-mail e múltiplos endereços de entrega, previstos na seção 6.5 do documento de escopo. O cadastro é utilizado pelas compras e pelo crediário do painel administrativo.
 
+A loja cria contas por `POST /auth/cadastro`, que grava credenciais em `Usuario` e vincula um novo `Cliente` pela relação única `Usuario.clienteId`. Esses clientes aparecem nas consultas abaixo. `POST /clientes` continua sendo o cadastro comercial pelo painel, sem criar senha ou usuário. Editar nome/e-mail em `Cliente` não altera as credenciais em `Usuario`. A própria conta usa `PUT /auth/me` e `/auth/me/enderecos`, com as mesmas validações e proprietário determinado pela sessão.
+
 ## Preparação
 
 Com o PostgreSQL em execução e `backend/.env` configurado a partir de `.env.example`, execute na pasta `backend`:
@@ -28,7 +30,7 @@ A variável `EXPOSICAO_CREDITO_CREDIARIO` define o limite inicial dos novos clie
 | GET | `/clientes/:id` | Cadastro, endereços, crediário e histórico de compras. |
 | POST | `/clientes` | Cria cliente, crediário e, opcionalmente, seus endereços em uma única operação. |
 | PUT | `/clientes/:id` | Atualiza os campos enviados do cadastro. |
-| DELETE | `/clientes/:id` | Exclui cliente sem compras, removendo seu crediário e endereços. |
+| DELETE | `/clientes/:id` | Exclui cliente sem conta vinculada ou compras, removendo seu crediário e endereços. |
 | GET | `/clientes/:id/compras` | Histórico de compras, da mais recente à mais antiga. |
 | GET | `/clientes/:id/debitos?dias=30` | Totais de parcelas pendentes, atrasadas e pagas até o horizonte informado. |
 | GET | `/clientes/:id/enderecos` | Lista os endereços do cliente. |
@@ -113,9 +115,9 @@ Um endereço só pode ser atualizado ou excluído quando pertence ao cliente inf
 
 As compras incluem itens com variação e produto, além das parcelas ordenadas por número. Os valores monetários do Prisma são serializados como strings decimais e as datas no formato ISO 8601.
 
-Clientes com parcelas em aberto não podem ser excluídos: a API retorna `409` com a mensagem de dívida pendente. Mesmo sem parcelas em aberto, qualquer compra registrada (inclusive quitada ou cancelada) preserva o cliente e retorna `409` com a mensagem de compras registradas.
+Clientes com conta de usuário vinculada não podem ser excluídos: a API retorna `409`, e a chave estrangeira também protege esse vínculo. Clientes com parcelas em aberto retornam `409` com a mensagem de dívida pendente. Mesmo sem parcelas em aberto, qualquer compra registrada (inclusive quitada ou cancelada) preserva o cliente e retorna `409` com a mensagem de compras registradas.
 
-Quando não há compras, o cliente pode ser excluído mesmo que possua o crediário criado automaticamente. A API remove o crediário e o cliente na mesma transação; os endereços saem por `ON DELETE CASCADE`, e a resposta é `204`. Cadastros antigos sem crediário também podem ser removidos se não tiverem compras. As chaves estrangeiras continuam protegendo vínculos criados simultaneamente, e uma falha desfaz a transação.
+Quando não há conta vinculada nem compras, o cliente pode ser excluído mesmo que possua o crediário criado automaticamente. A API remove o crediário e o cliente na mesma transação; os endereços saem por `ON DELETE CASCADE`, e a resposta é `204`. Cadastros antigos sem crediário também podem ser removidos se não tiverem esses vínculos. As chaves estrangeiras continuam protegendo vínculos criados simultaneamente, e uma falha desfaz a transação.
 
 ## Consulta de débitos
 
@@ -130,7 +132,7 @@ Quando não há compras, o cliente pode ser excluído mesmo que possua o crediá
 }
 ```
 
-Parcelas não pagas com vencimento anterior à consulta são contabilizadas como atrasadas. A consulta apenas calcula os totais, sem atualizar o status salvo das parcelas. Os nomes dos campos e a regra de cálculo foram mantidos.
+Parcelas pendentes com vencimento anterior à consulta são contabilizadas como atrasadas. Parcelas canceladas não compõem débitos ou atrasos. A consulta apenas calcula os totais, sem atualizar o status salvo das parcelas.
 
 ## Respostas de erro
 
@@ -148,7 +150,7 @@ A rota de débitos mantém o formato `{ "erro": "..." }` para cliente inexistent
 | --- | --- |
 | `400` | Dados inválidos, ID inválido, corpo vazio, campos não permitidos ou JSON malformado. |
 | `404` | Cliente/endereço não encontrado ou endereço que não pertence ao cliente da URL. |
-| `409` | CPF duplicado ou exclusão impedida por parcelas em aberto/compras registradas; também protege vínculos concorrentes. |
+| `409` | CPF duplicado ou exclusão impedida por conta vinculada, parcelas em aberto ou compras registradas; também protege vínculos concorrentes. |
 | `413` | Corpo maior que o limite do parser JSON (100 KB). |
 | `500` | Erro interno, sem detalhes do banco na resposta. |
 

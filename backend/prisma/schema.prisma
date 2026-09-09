@@ -7,22 +7,38 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Autenticação do painel administrativo.
-// Não existia no diagrama ER original (que modela o domínio da loja,
-// não usuários internos) — adicionado aqui porque a tela de Login do
-// painel precisa de algo para autenticar contra.
+// Credenciais de acesso. Dados comerciais e pessoais da loja ficam em Cliente.
+// Usuários internos podem existir sem cliente; contas públicas usam papel CLIENTE.
 model Usuario {
   id        Int      @id @default(autoincrement())
   nome      String
   email     String   @unique
   senhaHash String
-  papel     PapelUsuario @default(ADMIN)
+  papel     PapelUsuario @default(CLIENTE)
   criadoEm  DateTime @default(now())
+  clienteId Int?     @unique
+
+  cliente   Cliente? @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  sessoes   SessaoUsuario[]
 }
 
 enum PapelUsuario {
   ADMIN
   OPERADOR
+  CLIENTE
+}
+
+model SessaoUsuario {
+  id         Int      @id @default(autoincrement())
+  tokenHash  String   @unique
+  usuarioId  Int
+  criadoEm   DateTime @default(now())
+  expiraEm   DateTime
+
+  usuario    Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@index([expiraEm])
 }
 
 model Fornecedor {
@@ -101,6 +117,8 @@ model Cliente {
   estadoCivil  String?
   telefone     String?
   email        String?
+
+  usuario      Usuario?
 
   crediario    Crediario?
   compras      Compra[]

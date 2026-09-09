@@ -9,9 +9,11 @@ import clientesRouter from "./routes/clientes.js";
 import crediarioRouter from "./routes/crediario.js";
 import comprasRouter from "./routes/compras.js";
 import parcelasRouter from "./routes/parcelas.js";
+import authRouter from "./routes/auth.js";
 
 export const app = express();
 
+app.use("/auth", authRouter);
 app.use(cors());
 app.use(express.json());
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));

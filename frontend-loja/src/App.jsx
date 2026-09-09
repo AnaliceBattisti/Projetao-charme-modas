@@ -7,6 +7,12 @@ import Produto from "./pages/Produto.jsx";
 import Carrinho from "./pages/Carrinho.jsx";
 import Favoritos from "./pages/Favoritos.jsx";
 import EmBreve from "./pages/EmBreve.jsx";
+import Login from "./pages/Login.jsx";
+import Cadastro from "./pages/Cadastro.jsx";
+import EditarConta from "./pages/EditarConta.jsx";
+import Contato from "./pages/Contato.jsx";
+import Informacoes from "./pages/Informacoes.jsx";
+import "./styles/conta.css";
 
 export default function App() {
   return (
@@ -29,16 +35,13 @@ export default function App() {
                 />
               }
             />
-            <Route
-              path="/conta"
-              element={
-                <EmBreve
-                  titulo="Sua conta Charme Modas"
-                  subtitulo="Acompanhe pedidos, salve favoritos e agilize suas compras."
-                  descricao="Login e cadastro de cliente ainda não estão prontos — hoje seus favoritos e carrinho ficam salvos apenas neste navegador."
-                />
-              }
-            />
+            <Route path="/conta" element={<Login />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/cadastro" element={<Cadastro />} />
+            <Route path="/minha-conta" element={<Login />} />
+            <Route path="/minha-conta/editar" element={<EditarConta />} />
+            <Route path="/contato" element={<Contato />} />
+            <Route path="/informacoes/:assunto" element={<Informacoes />} />
             <Route
               path="*"
               element={

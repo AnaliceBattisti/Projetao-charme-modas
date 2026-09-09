@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
-// Carrinho e favoritos vivem no localStorage do navegador: a loja ainda não tem
-// login de cliente, então não há onde guardar isso no servidor por enquanto.
+// Carrinho e favoritos continuam locais, independentes da sessão da conta.
+// Os IDs são dos produtos e variações reais retornados pela API.
 const CHAVE_CARRINHO = "cm_carrinho";
 const CHAVE_FAVORITOS = "cm_favoritos";
 

@@ -5,4 +5,5 @@ export default defineConfig({
   plugins: [react()],
   // 5173 fica com o painel administrativo.
   server: { port: 5174 },
+  preview: { port: 4174 },
 });

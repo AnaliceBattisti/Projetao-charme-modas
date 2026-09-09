@@ -13,6 +13,8 @@ erDiagram
     CLIENTE ||--o| CREDIARIO : possui
     CLIENTE ||--o{ COMPRA : realiza
     CLIENTE ||--o{ ENDERECO_CLIENTE : possui
+    CLIENTE |o--o| USUARIO : "tem conta opcional"
+    USUARIO ||--o{ SESSAO_USUARIO : possui
     COMPRA ||--o{ ITEM_COMPRA : contem
     COMPRA ||--o{ PARCELA : "gera se crediario"
 
@@ -49,6 +51,22 @@ erDiagram
         int quantidade
         string motivo
         datetime data
+    }
+    USUARIO {
+        int id PK
+        string nome
+        string email UK
+        string senhaHash
+        enum papel "CLIENTE, ADMIN ou OPERADOR"
+        int clienteId FK,UK "opcional"
+        datetime criadoEm
+    }
+    SESSAO_USUARIO {
+        int id PK
+        string tokenHash UK
+        int usuarioId FK
+        datetime criadoEm
+        datetime expiraEm
     }
     CLIENTE {
         int id PK
@@ -98,11 +116,11 @@ erDiagram
         int numero
         decimal valor
         datetime dataVencimento
-        string status "PENDENTE / PAGA / ATRASADA"
+        string status "PENDENTE / PAGA / ATRASADA / CANCELADA"
     }
 ```
 
-A tabela `Usuario` (autenticação do painel) fica de fora do diagrama acima de propósito — ela não se relaciona com o domínio da loja, é só suporte pro login administrativo (ver seção abaixo).
+`Usuario` guarda as credenciais e tem um vínculo opcional e único com `Cliente`. Contas públicas são criadas com papel `CLIENTE` e vínculo obrigatório pela API; o schema permite clientes sem conta e usuários internos sem cliente. `SessaoUsuario` mantém as sessões de acesso da loja (ver seções abaixo).
 
 - **Fornecedor → Produto**: 1:N. Um produto pertence a um único fornecedor.
 - **Produto → Variação**: 1:N. Cada combinação de cor/tamanho de um produto é uma variação própria, com seu próprio estoque e SKU.
@@ -136,6 +154,7 @@ A tabela `Usuario` (autenticação do painel) fica de fora do diagrama acima de 
 | categoria | String? | usado nos filtros do painel (Feminino/Masculino/Infantil/Acessórios) |
 | precoCusto | Decimal(10,2) | |
 | precoVenda | Decimal(10,2) | |
+| criadoEm | DateTime | default now(); ordena o catálogo e identifica novidades |
 
 ### Variação
 | Campo | Tipo | Observação |
@@ -175,9 +194,9 @@ A tabela `Usuario` (autenticação do painel) fica de fora do diagrama acima de 
 
 As regras de formato, tamanho e faixa acima são aplicadas pela API. O banco garante os tipos, a nulabilidade, a chave primária e a unicidade de `cpf`. Cadastros antigos com CPF mascarado continuam sendo reconhecidos nas verificações de duplicidade; a migração de e-mail e endereços não reescreve esses CPFs.
 
-As relações no Prisma são `crediario: Crediario?`, `compras: Compra[]` e `enderecos: EnderecoCliente[]`. `POST /clientes` cria cliente, endereços opcionais e crediário em uma única operação atômica. O crediário inicia com status `ATIVO` e os campos `limiteCredito` e `limiteDisponivel` iguais ao valor de `EXPOSICAO_CREDITO_CREDIARIO`, usando zero quando a variável está ausente. Essa criação é feita pela API; a relação opcional no schema permite manter clientes antigos sem crediário.
+As relações no Prisma são `usuario: Usuario?`, `crediario: Crediario?`, `compras: Compra[]` e `enderecos: EnderecoCliente[]`. `POST /clientes` cria cliente, endereços opcionais e crediário em uma única operação atômica. `POST /auth/cadastro` cria o mesmo conjunto junto ao usuário com credenciais. O crediário inicia com status `ATIVO` e os campos `limiteCredito` e `limiteDisponivel` iguais ao valor de `EXPOSICAO_CREDITO_CREDIARIO`, usando zero quando a variável está ausente. Essa criação é feita pela API; a relação opcional no schema permite manter clientes antigos sem crediário.
 
-`PUT /clientes/:id` preserva os campos omitidos e não altera compras nem crediário. Na exclusão, a API rejeita parcelas em aberto e também qualquer compra registrada, mesmo quitada ou cancelada, retornando `409`. Sem compras, a presença de crediário não impede a exclusão: a API remove esse registro e o cliente na mesma transação, e os endereços são removidos em cascata. A resposta é `204`, inclusive para clientes novos com crediário automático. A remoção do crediário é explícita na API, não uma cascata dessa relação; as chaves estrangeiras continuam protegendo vínculos concorrentes, e uma falha desfaz a transação.
+`PUT /clientes/:id` preserva os campos omitidos e não altera credenciais, compras nem crediário. Na exclusão, a API rejeita conta de usuário vinculada, parcelas em aberto e qualquer compra registrada, mesmo quitada ou cancelada, retornando `409`. Sem esses vínculos, a presença de crediário não impede a exclusão: a API remove esse registro e o cliente na mesma transação, e os endereços são removidos em cascata. A resposta é `204`, inclusive para clientes novos com crediário automático. A remoção do crediário é explícita na API, não uma cascata dessa relação; as chaves estrangeiras continuam protegendo vínculos concorrentes, e uma falha desfaz a transação.
 
 ### EnderecoCliente
 
@@ -234,25 +253,40 @@ O cadastro inicial aceita até 20 endereços na mesma requisição; esse limite 
 | numero | Int | número da parcela (1, 2, 3...) |
 | valor | Decimal(10,2) | |
 | dataVencimento | DateTime | |
-| status | Enum: `PENDENTE` \| `PAGA` \| `ATRASADA` | default `PENDENTE` |
+| status | Enum: `PENDENTE` \| `PAGA` \| `ATRASADA` \| `CANCELADA` | default `PENDENTE`; canceladas não compõem os débitos do cliente |
 
-### Usuario *(fora do diagrama original)*
+### Usuario 
 | Campo | Tipo | Observação |
 |---|---|---|
 | id | Int (PK) | |
 | nome | String | |
 | email | String | único |
-| senhaHash | String | |
-| papel | Enum: `ADMIN` \| `OPERADOR` | default `ADMIN` |
+| senhaHash | String | scrypt com salt aleatório; senha original não é armazenada |
+| papel | Enum: `ADMIN` \| `OPERADOR` \| `CLIENTE` | default `CLIENTE`; cadastro público fixa esse papel |
+| clienteId | Int (FK, único) | opcional; referencia `Cliente.id`, com `ON DELETE RESTRICT` |
 | criadoEm | DateTime | default now() |
 
-Essa tabela não faz parte do domínio da loja (o diagrama ER da equipe modela produto/estoque/cliente/crediário, não usuários internos do sistema). Foi criada porque o painel administrativo precisa de algo pra autenticar contra — hoje ela existe no schema, mas **o login ainda não usa ela de verdade** (ver seção de autenticação em [ARQUITETURA.md](./ARQUITETURA.md)). É o próximo passo óbvio de quem for implementar autenticação real.
+O cadastro e o login da loja usam essa tabela. O usuário recebe as credenciais e é criado junto ao cliente; CPF, contato e relações comerciais ficam em `Cliente`. Nome e e-mail são preenchidos nas duas tabelas inicialmente para manter o contrato administrativo. Alterações de contato pelo painel não alteram o e-mail de acesso. Usuários e clientes antigos são preservados sem vínculo automático. O login administrativo ainda não usa a tabela (ver [ARQUITETURA.md](./ARQUITETURA.md)).
+
+### SessaoUsuario
+
+| Campo | Tipo | Observação |
+| --- | --- | --- |
+| id | Int (PK) | autoincremento |
+| tokenHash | String (único) | SHA-256 do token aleatório; token original fica somente no cookie |
+| usuarioId | Int (FK, índice) | referencia `Usuario.id`, com `ON DELETE CASCADE` |
+| criadoEm | DateTime | default now() |
+| expiraEm | DateTime (índice) | sete dias após o login |
+
+A sessão é validada em `/auth/me`, revogada no logout e substituída quando o mesmo navegador faz outro login. O cookie é HttpOnly, SameSite=Lax e Secure em produção. Contratos e regras em [CONTAS.md](./CONTAS.md).
 
 ## O que mudou em relação ao diagrama ER original da equipe
 
 | Mudança | Motivo |
 |---|---|
-| Tabela `Usuario` adicionada | Necessária pra login do painel; não existia no domínio original |
+| Tabela `Usuario` adicionada | Credenciais de acesso; agora usada nas contas de clientes da loja |
+| `Usuario.clienteId` único e papel `CLIENTE` | Vinculam a conta aos dados comerciais sem converter usuários internos ou clientes antigos |
+| Tabela `SessaoUsuario` adicionada | Mantém sessões revogáveis no servidor, com apenas o hash do token |
 | `Variacao.sku` virou opcional (era obrigatório) | Nem toda variação cadastrada na loja física tem SKU definido ainda |
 | `Variacao.estoqueMinimo` e `estoqueAtual` adicionados | Necessários pro alerta de estoque baixo/esgotado na tela de Estoque |
 | `MovimentacaoEstoque.motivo` adicionado | Descrever a movimentação (chegada de mercadoria, venda, ajuste de inventário) |
@@ -268,7 +302,7 @@ Histórico em `backend/prisma/migrations/`:
 1. **`20260814021309_init`** — schema inicial, traduzido direto do diagrama ER da equipe (todas as tabelas originais + `Usuario`).
 2. **`20260825014834_estoque_minimo_atual_motivo`** — adiciona `estoqueMinimo`/`estoqueAtual` em Variação, `motivo` em MovimentacaoEstoque, e o tipo `AJUSTE`.
 3. **`20260825021818_sku_opcional`** — torna `Variacao.sku` opcional.
+4. Para o cadastro de clientes, a migração **`20260907143000_clientes_email_enderecos`** adiciona `Cliente.email` como coluna opcional e cria `EnderecoCliente`, com índice em `clienteId` e chave estrangeira em cascata. Os clientes existentes são preservados, inicialmente com e-mail nulo e sem endereços; essa migração não cria crediários para eles. O cadastro integrado também depende das migrations do módulo de crediário que constam no diretório, incluindo a que adiciona `limiteDisponivel`.
+5. Para contas de clientes, **`20260908200000_papel_cliente`** acrescenta o valor `CLIENTE` ao enum em uma migração separada, antes de usá-lo como padrão. **`20260908200100_usuario_cliente_sessao`** acrescenta o vínculo opcional e único, define o novo papel padrão e cria as sessões. Nenhum cliente ou usuário existente é apagado ou associado automaticamente.
 
-Para o cadastro de clientes, a migração **`20260907143000_clientes_email_enderecos`** adiciona `Cliente.email` como coluna opcional e cria `EnderecoCliente`, com índice em `clienteId` e chave estrangeira em cascata. Os clientes existentes são preservados, inicialmente com e-mail nulo e sem endereços; essa migração não cria crediários para eles. O cadastro integrado também depende das migrations do módulo de crediário que constam no diretório, incluindo a que adiciona `limiteDisponivel`.
-
-Pra aplicar as migrations num banco novo: `npx prisma migrate dev` (ver `README.md` na raiz). Pra alterar o schema, sempre editar `schema.prisma` e rodar `npx prisma migrate dev --name <descricao>` — nunca alterar o banco diretamente.
+Para aplicar as migrations existentes: `npx prisma migrate deploy` e `npx prisma generate` (ver `README.md` na raiz). Para alterar o schema, editar `schema.prisma` e rodar `npx prisma migrate dev --name <descricao>` em desenvolvimento.
