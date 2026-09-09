@@ -26,7 +26,21 @@ router.get("/", async (req, res) => {
       where,
       include: {
         cliente: true,
-        itens: true
+        itens: {
+          include:{
+            variacao:{
+              select:{
+                cor: true,
+                tamanho: true,
+                produto:{
+                  select:{
+                    nome:true
+                  }
+                }
+              }
+            }
+          }
+        }
       },
       orderBy: { data: "desc" },
     });
@@ -53,7 +67,7 @@ router.get("/:id", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-    const { clienteId, formaPagamento, data = new Date().toISOString(), itens, numeroParcelas = 1 } = req.body;
+    const { clienteId, formaPagamento, data = new Date().toISOString(), itens, numeroParcelas = 1, origem } = req.body;
 
     if (!itens || !Array.isArray(itens) || itens.length === 0) {
       return res.status(400).json({ erro: "A compra deve conter pelo menos um item." });
@@ -108,6 +122,7 @@ router.post("/", async (req, res) => {
           valorTotal: valorTotalCalculado,
           formaPagamento: formaPagamento.toUpperCase(),
           data,
+          status: origem === "backoffice" ? "CONCLUIDA" : "PENDENTE",
           itens: {
             create: itens.map((item) => ({
               variacaoId: Number(item.variacaoId),
@@ -215,5 +230,95 @@ function gerarParcelasSeguras(valorTotalFinanciado, quantidadeParcelas) {
 
   return parcelas;
 }
+
+router.put("/:id/cancelar", async (req, res) => {
+  try {
+    const compraId = Number(req.params.id);
+
+    const compraCancelada = await prisma.$transaction(async (tx) => {
+      const compra = await tx.compra.findUnique({
+        where: { id: compraId },
+        include: {
+          itens: true,
+          parcelas: true,
+        },
+      });
+
+      if (!compra) {
+        throw new Error("Compra não encontrada.");
+      }
+
+      if (compra.status === "CANCELADA") {
+        throw new Error("Esta compra já está cancelada.");
+      }
+
+      for (const item of compra.itens) {
+        await tx.variacao.update({
+          where: { id: item.variacaoId },
+          data: {
+            estoqueAtual: {
+              increment: item.quantidade,
+            },
+          },
+        });
+
+        await tx.movimentacaoEstoque.create({
+          data: {
+            variacaoId: item.variacaoId,
+            tipo: "AJUSTE",
+            quantidade: item.quantidade,
+            motivo: `Estorno devido ao cancelamento da Compra #${compra.id}`,
+          },
+        });
+      }
+
+      if (compra.formaPagamento === "CREDIARIO") {
+        const crediario = await tx.crediario.findUnique({
+          where: { clienteId: compra.clienteId },
+        });
+
+        if (crediario) {
+          await tx.crediario.update({
+            where: { clienteId: compra.clienteId },
+            data: {
+              limiteDisponivel: {
+                increment: Number(compra.valorTotal),
+              },
+            },
+          });
+        }
+      }
+
+      await tx.parcela.updateMany({
+        where: {
+          compraId: compra.id,
+          status: { in: ["PENDENTE", "ATRASADA"] },
+        },
+        data: {
+          status: "CANCELADA",
+        },
+      });
+
+      return tx.compra.update({
+        where: { id: compra.id },
+        data: {
+          status: "CANCELADA",
+        },
+        include: {
+          itens: true,
+          parcelas: true,
+        },
+      });
+    });
+
+    return res.json({
+      mensagem: "Compra cancelada e estoque/limite estornados com sucesso.",
+      compra: compraCancelada,
+    });
+  } catch (error) {
+    console.error("Erro ao cancelar compra:", error.message);
+    return res.status(400).json({ erro: error.message });
+  }
+});
 
 export default router;
