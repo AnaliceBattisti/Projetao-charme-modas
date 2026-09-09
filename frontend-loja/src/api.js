@@ -1,24 +1,53 @@
-export const BASE_URL = "http://localhost:3333";
+// Usa o mesmo hostname da loja para manter o cookie entre as portas locais.
+export const BASE_URL = (
+  import.meta.env.VITE_API_URL ||
+  `${window.location.protocol}//${window.location.hostname}:3333`
+).replace(/\/$/, "");
 
-async function request(path, options) {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    ...options,
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || body.erro || `Erro ${res.status} em ${path}`);
+export class ApiError extends Error {
+  constructor(message, status) {
+    super(message);
+    this.status = status;
   }
-  if (res.status === 204) return null;
-  return res.json();
+}
+
+export async function request(path, { method = "GET", body } = {}) {
+  let response;
+  try {
+    response = await fetch(`${BASE_URL}${path}`, {
+      method,
+      credentials: path.startsWith("/auth/") ? "include" : "omit",
+      headers:
+        body === undefined ? undefined : { "Content-Type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: AbortSignal.timeout(15000),
+    });
+  } catch {
+    throw new ApiError(
+      "Não foi possível conectar ao servidor. Verifique a conexão e tente novamente.",
+      0,
+    );
+  }
+  if (response.status === 204) return null;
+  const data = await response.json().catch(() => null);
+  if (!response.ok)
+    throw new ApiError(
+      data?.error || data?.erro || "Não foi possível concluir a solicitação.",
+      response.status,
+    );
+  if (!data)
+    throw new ApiError(
+      "O servidor retornou uma resposta inválida.",
+      response.status,
+    );
+  return data;
 }
 
 export const api = {
   get: (path) => request(path),
-  post: (path, data) => request(path, { method: "POST", body: JSON.stringify(data) }),
+  post: (path, body) => request(path, { method: "POST", body }),
 };
 
-// As imagens são servidas pelo backend (/uploads/...), não pelo Vite.
 export function imagemUrl(caminho) {
   return caminho ? `${BASE_URL}${caminho}` : null;
 }

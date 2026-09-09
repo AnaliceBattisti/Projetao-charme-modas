@@ -884,3 +884,28 @@ button {
     display: none;
   }
 }
+
+/* Mantém o acesso à conta e à busca visíveis nos celulares. */
+@media (max-width: 600px) {
+  .cm-header-inner {
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 12px 16px;
+  }
+  .cm-header-inner > .cm-icone-botao {
+    margin-left: auto;
+  }
+  .cm-header-acoes {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-end;
+  }
+  .cm-header-busca {
+    flex: 1;
+    min-width: 0;
+  }
+  .cm-header-busca input {
+    width: 100%;
+    min-width: 0;
+  }
+}

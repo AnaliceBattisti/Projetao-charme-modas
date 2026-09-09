@@ -104,9 +104,12 @@ router.put("/:id", asyncRoute(async (req, res) => {
 
 router.delete("/:id", asyncRoute(async (req, res) => {
   const id = req.params.id;
+  if (await prisma.usuario.findUnique({ where: { clienteId: id }, select: { id: true } })) {
+    return res.status(409).json({ error: "Cliente possui uma conta de acesso vinculada e não pode ser excluído." });
+  }
   // Dívida em aberto impede a exclusão.
   const parcelasEmAberto = await prisma.parcela.count({
-    where: { compra: { clienteId: id }, status: { not: "PAGA" } },
+    where: { compra: { clienteId: id }, status: { in: ["PENDENTE", "ATRASADA"] } },
   });
   if (parcelasEmAberto > 0) {
     return res.status(409).json({ error: "Cliente possui parcelas em aberto e não pode ser excluído." });
@@ -203,7 +206,8 @@ router.get('/:id/debitos', async (req, res) => {
     let qtdParcelasAtrasadas = 0;
 
    cliente.compras.map((compra) => {
-      compra.parcelas.map((parcela) => {
+       compra.parcelas.map((parcela) => {
+        if (parcela.status === 'CANCELADA') return;
         const valorNum = Number(parcela.valor);
         let statusCalculado = parcela.status;
 
@@ -245,7 +249,7 @@ router.use((error, req, res, next) => {
     return res.status(404).json({ error: "Cliente ou endereço não encontrado." });
   }
   if (error.code === "P2003" && req.method === "DELETE") {
-    return res.status(409).json({ error: "Cliente possui compras ou crediário vinculados e não pode ser excluído." });
+    return res.status(409).json({ error: "Cliente possui compras, crediário ou conta de acesso vinculados e não pode ser excluído." });
   }
   next(error);
 });
