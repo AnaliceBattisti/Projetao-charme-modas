@@ -10,6 +10,7 @@ import {
 import { limitarTentativas } from "../middleware/limitarTentativas.js";
 import { exigirConta } from "../middleware/exigirConta.js";
 import { validarCadastro, validarLogin } from "../validation/auth.js";
+import recuperacaoSenhaRouter from "./recuperacaoSenha.js";
 import {
   cpfFormats,
   validateCliente,
@@ -53,6 +54,7 @@ router.use(
   }),
 );
 router.use(json({ limit: "32kb" }));
+router.use(recuperacaoSenhaRouter);
 
 router.post(
   "/cadastro",

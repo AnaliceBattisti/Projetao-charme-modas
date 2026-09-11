@@ -15,3 +15,7 @@ export const removerEnderecoConta = (id) =>
   request(`/auth/me/enderecos/${id}`, { method: "DELETE" });
 export const sairDaConta = () =>
   request("/auth/logout", { method: "POST", body: {} });
+export const solicitarRecuperacaoSenha = (dados) =>
+  request("/auth/esqueci-senha", { method: "POST", body: dados });
+export const redefinirSenhaConta = (dados) =>
+  request("/auth/redefinir-senha", { method: "POST", body: dados });

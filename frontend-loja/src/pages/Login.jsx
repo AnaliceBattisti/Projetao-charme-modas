@@ -170,18 +170,12 @@ export default function Login() {
               minLength={8}
               maxLength={128}
             />
-            <button
-              type="button"
+            <Link
+              to="/esqueci-senha"
               className="conta-link conta-esqueceu"
-              onClick={() => {
-                setErro(false);
-                setMensagem(
-                  "A recuperação automática de senha ainda não está disponível. Entre em contato com a loja para obter ajuda.",
-                );
-              }}
             >
               Esqueci minha senha
-            </button>
+            </Link>
             <button type="submit" className="cm-botao">
               {enviando ? "Entrando..." : "Entrar"}
             </button>
