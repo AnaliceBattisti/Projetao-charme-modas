@@ -236,7 +236,7 @@ export default function Clientes() {
           {modal.type === "delete" && (
             <div>
               <p>Deseja excluir <strong>{modal.cliente.nome}</strong>?</p>
-              <p className="cm-text-muted">O cadastro, o crediário e os endereços serão removidos. Clientes com compras registradas, mesmo quitadas, não podem ser excluídos.</p>
+              <p className="cm-text-muted">O cadastro, a conta de acesso, o crediário e os endereços serão removidos. Clientes com compras registradas, mesmo quitadas, não podem ser excluídos.</p>
               <ErroFormulario error={modalError} />
               <div className="cm-page-actions" style={ACTIONS}>
                 <button className="cm-button-outline" style={visual.outline} disabled={busy} onClick={fechar}>Cancelar</button>

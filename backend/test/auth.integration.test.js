@@ -129,7 +129,7 @@ after(async () => {
   }
 });
 
-test("cadastro cria Usuario CLIENTE e vincula dados pessoais, endereços e crédito sem expor senha", async () => {
+test("cadastro cria Usuario CLIENTE e exclusão sem compras remove conta e dados vinculados", async () => {
   const dados = novoCadastro({
     email: ` CADASTRO-${randomUUID()}@EXAMPLE.COM `,
     enderecos: [endereco],
@@ -158,10 +158,30 @@ test("cadastro cria Usuario CLIENTE e vincula dados pessoais, endereços e créd
   const admin = await request(`/clientes/${cliente.id}`);
   assert.equal(admin.status, 200);
   assert.equal(JSON.stringify(admin.data).includes("senhaHash"), false);
-  assert.equal(
-    (await request(`/clientes/${cliente.id}`, { method: "DELETE" })).status,
-    409,
-  );
+  // Um cliente sem compras pode ser excluído mesmo possuindo conta de acesso.
+  // Ao excluir o Usuario, SessaoUsuario e RecuperacaoSenha também usam Cascade.
+  const sessao = await login(dados);
+  assert.equal(sessao.status, 200, JSON.stringify(sessao.data));
+  assert.equal(await prisma.sessaoUsuario.count({ where: { usuarioId: usuario.id } }), 1);
+
+  await prisma.historicoLimiteCrediarioCliente.create({
+    data: {
+      clienteId: cliente.id,
+      limiteAnterior: "150.00",
+      limiteFinal: "200.00",
+      motivo: "Teste de exclusão",
+    },
+  });
+
+  const exclusao = await request(`/clientes/${cliente.id}`, { method: "DELETE" });
+  assert.equal(exclusao.status, 204);
+  assert.equal(await prisma.usuario.count({ where: { id: usuario.id } }), 0);
+  assert.equal(await prisma.sessaoUsuario.count({ where: { usuarioId: usuario.id } }), 0);
+  assert.equal(await prisma.cliente.count({ where: { id: cliente.id } }), 0);
+  assert.equal(await prisma.crediario.count({ where: { clienteId: cliente.id } }), 0);
+  assert.equal(await prisma.enderecoCliente.count({ where: { clienteId: cliente.id } }), 0);
+  assert.equal(await prisma.historicoLimiteCrediarioCliente.count({ where: { clienteId: cliente.id } }), 0);
+  assert.equal((await login(dados)).status, 401);
 });
 
 test("dados inválidos ou privilégios enviados não criam registros parciais", async () => {
