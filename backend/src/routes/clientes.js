@@ -104,22 +104,26 @@ router.put("/:id", asyncRoute(async (req, res) => {
 
 router.delete("/:id", asyncRoute(async (req, res) => {
   const id = req.params.id;
-  if (await prisma.usuario.findUnique({ where: { clienteId: id }, select: { id: true } })) {
-    return res.status(409).json({ error: "Cliente possui uma conta de acesso vinculada e não pode ser excluído." });
-  }
-  // Dívida em aberto impede a exclusão.
+
+  // Parcelas pendentes ou atrasadas impedem a exclusão.
   const parcelasEmAberto = await prisma.parcela.count({
     where: { compra: { clienteId: id }, status: { in: ["PENDENTE", "ATRASADA"] } },
   });
   if (parcelasEmAberto > 0) {
     return res.status(409).json({ error: "Cliente possui parcelas em aberto e não pode ser excluído." });
   }
-  
+
+  // Qualquer compra registrada preserva o histórico do cliente, mesmo que esteja totalmente paga.
   if (await prisma.compra.count({ where: { clienteId: id } })) {
     return res.status(409).json({ error: "Cliente possui compras registradas e não pode ser excluído." });
   }
- 
+
+  // Sem compras, remove todo o cadastro relacionado na mesma transação.
+  // Endereços são removidos pelo onDelete: Cascade do relacionamento com Cliente.
+  // Sessões e tokens de recuperação são removidos pelo Cascade ao excluir Usuario.
   await prisma.$transaction([
+    prisma.usuario.deleteMany({ where: { clienteId: id } }),
+    prisma.historicoLimiteCrediarioCliente.deleteMany({ where: { clienteId: id } }),
     prisma.crediario.deleteMany({ where: { clienteId: id } }),
     prisma.cliente.delete({ where: { id } }),
   ]);
@@ -249,7 +253,7 @@ router.use((error, req, res, next) => {
     return res.status(404).json({ error: "Cliente ou endereço não encontrado." });
   }
   if (error.code === "P2003" && req.method === "DELETE") {
-    return res.status(409).json({ error: "Cliente possui compras, crediário ou conta de acesso vinculados e não pode ser excluído." });
+    return res.status(409).json({ error: "Cliente possui registros vinculados e não pode ser excluído." });
   }
   next(error);
 });
