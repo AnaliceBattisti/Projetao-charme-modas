@@ -1,0 +1,10 @@
+# Caixa SMTP apenas para desenvolvimento. Não entrega e-mails na internet.
+services:
+  mailpit:
+    image: axllent/mailpit:v1.27.4
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
+    environment:
+      MP_MAX_MESSAGES: 100

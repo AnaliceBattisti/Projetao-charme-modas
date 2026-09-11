@@ -280,6 +280,10 @@ O cadastro e o login da loja usam essa tabela. O usuário recebe as credenciais 
 
 A sessão é validada em `/auth/me`, revogada no logout e substituída quando o mesmo navegador faz outro login. O cookie é HttpOnly, SameSite=Lax e Secure em produção. Contratos e regras em [CONTAS.md](./CONTAS.md).
 
+### Recuperação de senha
+
+`RecuperacaoSenha` mantém no máximo um token por usuário: `id`, `usuarioId` único, `tokenHash` único (SHA-256), `criadoEm` e `expiraEm` indexado. A chave estrangeira para `Usuario` usa `ON DELETE CASCADE`. A migração `20260910010000_recuperacao_senha` acrescenta a tabela sem modificar registros existentes. A troca consome o token, atualiza a senha e revoga as sessões atomicamente. Veja [RECUPERACAO_SENHA.md](./RECUPERACAO_SENHA.md).
+
 ## O que mudou em relação ao diagrama ER original da equipe
 
 | Mudança | Motivo |
