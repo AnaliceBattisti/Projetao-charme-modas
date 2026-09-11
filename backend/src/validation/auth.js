@@ -53,3 +53,21 @@ export function validarLogin(body) {
   validarObjeto(body, ["email", "senha"]);
   return { email: validarEmail(body.email), senha: validarSenha(body.senha) };
 }
+
+export function validarRecuperacaoSenha(body) {
+  validarObjeto(body, ["email"]);
+  return { email: validarEmail(body.email) };
+}
+
+export function validarRedefinicaoSenha(body) {
+  validarObjeto(body, ["token", "senha", "confirmacao"]);
+  if (typeof body.token !== "string" || !/^[a-f0-9]{64}$/.test(body.token)) {
+    throw new ValidationError(
+      "Link inválido ou expirado. Solicite um novo link.",
+    );
+  }
+  const senha = validarSenha(body.senha);
+  if (body.confirmacao !== senha)
+    throw new ValidationError("As senhas precisam ser iguais.");
+  return { token: body.token, senha };
+}

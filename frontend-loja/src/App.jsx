@@ -10,6 +10,8 @@ import EmBreve from "./pages/EmBreve.jsx";
 import Login from "./pages/Login.jsx";
 import Cadastro from "./pages/Cadastro.jsx";
 import EditarConta from "./pages/EditarConta.jsx";
+import EsqueciSenha from "./pages/EsqueciSenha.jsx";
+import RedefinirSenha from "./pages/RedefinirSenha.jsx";
 import Contato from "./pages/Contato.jsx";
 import Informacoes from "./pages/Informacoes.jsx";
 import "./styles/conta.css";
@@ -37,6 +39,8 @@ export default function App() {
             />
             <Route path="/conta" element={<Login />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/esqueci-senha" element={<EsqueciSenha />} />
+            <Route path="/redefinir-senha" element={<RedefinirSenha />} />
             <Route path="/cadastro" element={<Cadastro />} />
             <Route path="/minha-conta" element={<Login />} />
             <Route path="/minha-conta/editar" element={<EditarConta />} />

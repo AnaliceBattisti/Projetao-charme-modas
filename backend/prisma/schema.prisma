@@ -20,6 +20,7 @@ model Usuario {
 
   cliente   Cliente? @relation(fields: [clienteId], references: [id], onDelete: Restrict)
   sessoes   SessaoUsuario[]
+  recuperacaoSenha RecuperacaoSenha?
 }
 
 enum PapelUsuario {
@@ -38,6 +39,18 @@ model SessaoUsuario {
   usuario    Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@index([usuarioId])
+  @@index([expiraEm])
+}
+
+model RecuperacaoSenha {
+  id         Int      @id @default(autoincrement())
+  usuarioId  Int      @unique
+  tokenHash  String   @unique
+  criadoEm   DateTime @default(now())
+  expiraEm   DateTime
+
+  usuario    Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
   @@index([expiraEm])
 }
 
