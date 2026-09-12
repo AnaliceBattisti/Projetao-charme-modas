@@ -99,6 +99,22 @@ test("login normaliza apenas o email e rejeita campos indevidos", () => {
   );
 });
 
+test("login exige senha preenchida sem aplicar as regras de criação de senha", () => {
+  for (const senha of ["1", "1234567", "x".repeat(129), " senha "]) {
+    assert.equal(validarLogin({ email: cadastro.email, senha }).senha, senha);
+  }
+  for (const senha of [undefined, null, 12345678, "", "   "]) {
+    assert.throws(
+      () => validarLogin({ email: cadastro.email, senha }),
+      /Senha é obrigatória\./,
+    );
+  }
+  assert.throws(
+    () => validarLogin({ email: "", senha: "1" }),
+    /E-mail é obrigatório\./,
+  );
+});
+
 test("hash tem salt aleatório, verifica senha e não aceita hashes malformados", async () => {
   const primeiro = await gerarSenhaHash(cadastro.senha);
   const segundo = await gerarSenhaHash(cadastro.senha);
