@@ -37,7 +37,7 @@ services:
     container_name: charme-modas-loja
     restart: unless-stopped
     ports:
-      - "3001:80"
+      - "30001:80"
     depends_on:
       - backend
 
