@@ -167,8 +167,6 @@ export default function Login() {
               placeholder="••••••••"
               autoComplete="current-password"
               required
-              minLength={8}
-              maxLength={128}
             />
             <Link
               to="/esqueci-senha"

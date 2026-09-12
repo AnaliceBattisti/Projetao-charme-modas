@@ -51,7 +51,11 @@ export function validarCadastro(body) {
 
 export function validarLogin(body) {
   validarObjeto(body, ["email", "senha"]);
-  return { email: validarEmail(body.email), senha: validarSenha(body.senha) };
+  const email = validarEmail(body.email);
+  if (typeof body.senha !== "string" || !body.senha.trim()) {
+    throw new ValidationError("Senha é obrigatória.");
+  }
+  return { email, senha: body.senha };
 }
 
 export function validarRecuperacaoSenha(body) {
