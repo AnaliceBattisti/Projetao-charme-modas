@@ -7,6 +7,7 @@ const itens = [
   { to: "/catalogo?novidades=1", label: "Novidades" },
   { to: "/favoritos", label: "Favoritos" },
   { to: "/conta", label: "Minha conta" },
+  { to: "/meus-pedidos", label: "Meus pedidos" },
   { to: "/carrinho", label: "Sacola" },
 ];
 

@@ -11,6 +11,7 @@ import { limitarTentativas } from "../middleware/limitarTentativas.js";
 import { exigirConta } from "../middleware/exigirConta.js";
 import { validarCadastro, validarLogin } from "../validation/auth.js";
 import recuperacaoSenhaRouter from "./recuperacaoSenha.js";
+import { enviarPedido, listarPedidos, consultarPedido } from "../services/pedidos.js";
 import {
   cpfFormats,
   validateCliente,
@@ -126,6 +127,25 @@ router.post(
 // Toda operação da própria conta usa o vínculo da sessão, nunca um ID enviado pelo cliente.
 router.use("/me", exigirConta);
 router.get("/me", (req, res) => res.json({ usuario: req.usuario }));
+
+router.get("/me/pedidos", asyncRoute(async (req, res) => {
+  const pagina = req.query.pagina ?? "1";
+  if (typeof pagina !== "string" || !/^[1-9]\d{0,5}$/.test(pagina)) {
+    throw new ValidationError("Informe uma página válida.");
+  }
+  res.json(await listarPedidos(req.usuario.clienteId, Number(pagina)));
+}));
+
+router.get("/me/pedidos/:pedidoId", asyncRoute(async (req, res) => {
+  const pedido = await consultarPedido(req.usuario.clienteId, validateId(req.params.pedidoId));
+  if (!pedido) return res.status(404).json({ error: "Pedido não encontrado." });
+  res.json({ pedido });
+}));
+
+router.post("/me/pedidos", limitarTentativas(), asyncRoute(async (req, res) => {
+  const pedido = await enviarPedido(req.usuario.clienteId, req.body);
+  res.status(201).json({ pedido });
+}));
 
 router.put(
   "/me",

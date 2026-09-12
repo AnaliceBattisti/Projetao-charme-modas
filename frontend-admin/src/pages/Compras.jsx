@@ -18,6 +18,9 @@ export default function Compras() {
 
   const [loadingCancelar, setLoadingCancelar] = useState(false);
   const [errorCancelar, setErrorCancelar] = useState(null);
+  const [aprovando, setAprovando] = useState(false);
+  const [erroAprovacao, setErroAprovacao] = useState(null);
+  const [numeroParcelas, setNumeroParcelas] = useState(1);
 
   const intlCurr = new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -52,18 +55,21 @@ export default function Compras() {
   useEffect(loadAll, [busca]);
 
   const STATUS_BADGE = {
+    SOLICITADA: "cm-badge-yellow",
     CONCLUIDA: "cm-badge-green",
     PENDENTE: "cm-badge-yellow",
     CANCELADA: "cm-badge-red",
   };
 
   const STATUS_TEXTO = {
+    SOLICITADA: "Aguardando aprovação",
     CONCLUIDA: "Concluída",
     PENDENTE: "Pendente",
     CANCELADA: "Cancelada",
   };
 
   const FORMA_PAGAMENTO_TEXTO = {
+    A_VISTA: "À vista (combinado com a loja)",
     CREDIARIO: "Crediário",
     PIX: "Pix",
     DINHEIRO: "Dinheiro",
@@ -72,6 +78,8 @@ export default function Compras() {
   }
 
   const handleAbrirDetalhes = (compra) => {
+    setErroAprovacao(null);
+    setNumeroParcelas(1);
     setCompraEmFoco(compra);
     setShowModalDetalhes(true);
   };
@@ -83,6 +91,7 @@ export default function Compras() {
   };
 
   const handleFecharModais = () => {
+    if (aprovando) return;
     setShowModalDetalhes(false);
     setShowModalCancelar(false);
     setCompraEmFoco(null);
@@ -105,6 +114,23 @@ export default function Compras() {
       );
     } finally {
       setLoadingCancelar(false);
+    }
+  };
+
+  const handleAprovarPedido = async () => {
+    if (!compraEmFoco || aprovando) return;
+    setAprovando(true);
+    setErroAprovacao(null);
+    try {
+      const compra = await api.put(`/compras/${compraEmFoco.id}/aprovar`, {
+        numeroParcelas: compraEmFoco.formaPagamento === "CREDIARIO" ? Number(numeroParcelas) : 1,
+      });
+      setCompraEmFoco({ ...compraEmFoco, ...compra });
+      loadAll();
+    } catch (error) {
+      setErroAprovacao(error.message);
+    } finally {
+      setAprovando(false);
     }
   };
 
@@ -159,7 +185,9 @@ export default function Compras() {
           </p>
 
           <p className="cm-text-muted" style={{ marginBottom: "24px" }}>
-            * Esta ação irá estornar os produtos ao estoque e devolver o limite do crediário ao cliente.
+            {compraEmFoco?.status === "SOLICITADA"
+              ? "Este pedido ainda não baixou estoque nem utilizou limite. O cancelamento apenas encerra a solicitação."
+              : "* Esta ação irá estornar os produtos ao estoque e devolver o limite do crediário ao cliente."}
           </p>
 
           <div
@@ -228,6 +256,9 @@ export default function Compras() {
                 <div className="cm-text-muted">
                   CPF: {compraEmFoco?.cliente?.cpf || "Não informado"}
                 </div>
+                {compraEmFoco?.status === "SOLICITADA" && <div className="cm-text-muted">
+                  Contato: {compraEmFoco.cliente?.telefone || compraEmFoco.cliente?.email || "Não informado"}
+                </div>}
               </div>
 
               <span
@@ -277,6 +308,22 @@ export default function Compras() {
               </div>
             </div>
           </div>
+
+          {compraEmFoco?.status === "SOLICITADA" && <div className="cm-card" style={{ marginBottom: 16 }}>
+            <h3 className="cm-section-title">Pedido enviado pela loja virtual</h3>
+            <p className="cm-text-muted">Confirme as peças e combine a entrega ou retirada com o cliente antes de aprovar.</p>
+            {compraEmFoco.formaPagamento === "CREDIARIO" ? <>
+              <label className="cm-label" htmlFor="pedido-parcelas">Parcelas combinadas com o cliente</label>
+              <select id="pedido-parcelas" className="cm-input" value={numeroParcelas} disabled={aprovando} onChange={(e) => setNumeroParcelas(e.target.value)}>
+                {[1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}x</option>)}
+              </select>
+              <p className="cm-text-muted">Ao aprovar, o sistema valida estoque e limite, registra a venda e gera as parcelas.</p>
+            </> : <p className="cm-text-muted">Aprove somente depois de confirmar o pagamento à vista com o cliente. A venda será registrada e o estoque será baixado.</p>}
+            {erroAprovacao && <p className="cm-error" role="alert">{erroAprovacao}</p>}
+            <button type="button" className="cm-button-pill" disabled={aprovando} onClick={handleAprovarPedido}>
+              {aprovando ? "Aprovando..." : "Aprovar pedido"}
+            </button>
+          </div>}
 
           {compraEmFoco?.itens && compraEmFoco.itens.length > 0 && (
             <div style={{ marginBottom: "16px" }}>
@@ -328,7 +375,7 @@ export default function Compras() {
         }}
       >
         <div style={{ display: "flex", gap: "8px" }}>
-          {["TODOS", "CONCLUIDA", "PENDENTE", "CANCELADA"].map((status) => (
+          {["TODOS", "SOLICITADA", "CONCLUIDA", "PENDENTE", "CANCELADA"].map((status) => (
             <button
               key={status}
               className={
@@ -401,7 +448,7 @@ export default function Compras() {
                     </button>
 
                     <div style={{ display: "flex", gap: "12px" }}>
-                      {compra.status === "PENDENTE" && (
+                      {["PENDENTE", "SOLICITADA"].includes(compra.status) && (
                         <button
                           className="cm-link-button cm-text-error"
                           onClick={() => handleAbrirCancelar(compra)}
