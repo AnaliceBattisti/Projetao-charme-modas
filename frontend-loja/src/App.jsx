@@ -5,6 +5,8 @@ import Home from "./pages/Home.jsx";
 import Catalogo from "./pages/Catalogo.jsx";
 import Produto from "./pages/Produto.jsx";
 import Carrinho from "./pages/Carrinho.jsx";
+import Checkout from "./pages/Checkout.jsx";
+import MeusPedidos from "./pages/MeusPedidos.jsx";
 import Favoritos from "./pages/Favoritos.jsx";
 import EmBreve from "./pages/EmBreve.jsx";
 import Login from "./pages/Login.jsx";
@@ -27,16 +29,9 @@ export default function App() {
             <Route path="/produto/:id" element={<Produto />} />
             <Route path="/carrinho" element={<Carrinho />} />
             <Route path="/favoritos" element={<Favoritos />} />
-            <Route
-              path="/checkout"
-              element={
-                <EmBreve
-                  titulo="Finalizar compra"
-                  subtitulo="1 Identificação · 2 Entrega · 3 Pagamento"
-                  descricao="O checkout é a próxima etapa: dados de entrega, forma de pagamento (Pix, cartão, boleto ou crediário) e fechamento do pedido."
-                />
-              }
-            />
+            <Route path="/checkout" element={<Checkout />} />
+            <Route path="/meus-pedidos" element={<MeusPedidos />} />
+            <Route path="/meus-pedidos/:pedidoId" element={<MeusPedidos />} />
             <Route path="/conta" element={<Login />} />
             <Route path="/login" element={<Login />} />
             <Route path="/esqueci-senha" element={<EsqueciSenha />} />

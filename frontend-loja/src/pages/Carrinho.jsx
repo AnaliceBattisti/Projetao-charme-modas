@@ -2,13 +2,9 @@ import { Link } from "react-router-dom";
 import { imagemUrl } from "../api.js";
 import { useLoja } from "../estado.jsx";
 import { formatarPreco } from "../format.js";
-import { calcularFrete, faltaParaFreteGratis } from "../frete.js";
 
 export default function Carrinho() {
   const { itens, subtotal, alterarQuantidade, remover } = useLoja();
-  const frete = calcularFrete(subtotal);
-  const falta = faltaParaFreteGratis(subtotal);
-  const total = subtotal + frete;
 
   if (itens.length === 0) {
     return (
@@ -89,21 +85,16 @@ export default function Carrinho() {
             <span>{formatarPreco(subtotal)}</span>
           </div>
           <div className="cm-resumo-linha">
-            <span>Frete</span>
-            <span>{frete === 0 ? "Grátis" : formatarPreco(frete)}</span>
+            <span>Entrega ou retirada</span>
+            <span>A combinar com a loja</span>
           </div>
-          {falta > 0 && (
-            <p className="cm-aviso-frete">
-              Faltam {formatarPreco(falta)} para o frete sair de graça.
-            </p>
-          )}
           <div className="cm-resumo-total">
-            <span>Total</span>
-            <span className="cm-preco">{formatarPreco(total)}</span>
+            <span>Total dos produtos</span>
+            <span className="cm-preco">{formatarPreco(subtotal)}</span>
           </div>
           <div className="cm-resumo-acoes">
             <Link to="/checkout">
-              <span className="cm-botao cm-botao-bloco">Ir para checkout</span>
+              <span className="cm-botao cm-botao-bloco">Revisar e enviar pedido</span>
             </Link>
             <Link to="/catalogo">
               <span className="cm-botao-claro cm-botao-bloco">Continuar comprando</span>

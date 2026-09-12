@@ -180,6 +180,7 @@ model HistoricoLimiteCrediarioCliente {
 
 model Compra {
   id             Int           @id @default(autoincrement())
+  chavePedido    String?       @unique
   clienteId      Int
   data           DateTime      @default(now())
   valorTotal     Decimal       @db.Decimal(10, 2)
@@ -192,6 +193,7 @@ model Compra {
 }
 
 enum StatusCompra {
+  SOLICITADA
   PENDENTE
   CONCLUIDA
   CANCELADA
