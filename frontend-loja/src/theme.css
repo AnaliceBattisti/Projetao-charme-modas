@@ -355,6 +355,64 @@ button {
   margin-bottom: 12px;
 }
 
+/* Indicativo das cores disponíveis do produto. */
+.cm-bolinhas {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0 0 8px;
+  min-height: 14px;
+}
+
+.cm-bolinha {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(33, 26, 31, 0.14);
+  flex-shrink: 0;
+  cursor: default;
+}
+
+.cm-bolinha-clara {
+  border-color: rgba(33, 26, 31, 0.28);
+}
+
+/* Nome de cor que não sabemos pintar: fica um xadrez discreto, o nome vem no title. */
+.cm-bolinha-desconhecida {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--placeholder),
+    var(--placeholder) 3px,
+    var(--superficie) 3px,
+    var(--superficie) 6px
+  );
+}
+
+.cm-bolinha-esgotada {
+  opacity: 0.35;
+  position: relative;
+}
+
+.cm-bolinha-esgotada::after {
+  content: "";
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  top: 50%;
+  height: 1px;
+  background: var(--texto);
+  transform: rotate(-45deg);
+}
+
+.cm-bolinha-ativa {
+  box-shadow: 0 0 0 2px var(--superficie), 0 0 0 3.5px var(--vinho);
+}
+
+.cm-bolinhas-resto {
+  font-size: 0.72rem;
+  color: var(--texto-suave);
+}
+
 .cm-preco {
   color: var(--vinho);
   font-weight: 700;
@@ -546,12 +604,20 @@ button {
 }
 
 .cm-opcao-caixa {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   border: 1px solid var(--borda);
   background: var(--superficie);
   border-radius: 8px;
   padding: 11px 18px;
   font-size: 0.88rem;
   cursor: pointer;
+}
+
+/* Na cor selecionada o botão fica vinho, então a bolinha precisa de aro claro. */
+.cm-opcao-caixa.ativa .cm-bolinha {
+  border-color: rgba(255, 255, 255, 0.6);
 }
 
 .cm-opcao-caixa:hover {

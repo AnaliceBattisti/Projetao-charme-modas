@@ -5,6 +5,7 @@ import { useLoja } from "../estado.jsx";
 import { formatarPreco, parcelaSemJuros } from "../format.js";
 import { useProdutos } from "../produtos.js";
 import { IconeCheck } from "../icons.jsx";
+import { corEhClara, corHex } from "../cores.js";
 
 const GARANTIAS = [
   "Compra segura",
@@ -185,6 +186,17 @@ export default function Produto() {
                       setAviso(null);
                     }}
                   >
+                    <span
+                      className={
+                        "cm-bolinha" +
+                        (corHex(valor)
+                          ? corEhClara(corHex(valor))
+                            ? " cm-bolinha-clara"
+                            : ""
+                          : " cm-bolinha-desconhecida")
+                      }
+                      style={corHex(valor) ? { background: corHex(valor) } : undefined}
+                    />
                     {valor}
                   </button>
                 ))}
