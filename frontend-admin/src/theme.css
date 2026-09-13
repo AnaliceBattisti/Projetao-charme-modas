@@ -842,6 +842,13 @@ a {
   margin-bottom: 0;
 }
 
+.cm-acoes-linha {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  white-space: nowrap;
+}
+
 .cm-input-minimo {
   width: 68px;
   margin-bottom: 0;
