@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
+import { aprovarPedido } from "../services/pedidos.js";
+import { validateId, ValidationError } from "../validation/clientes.js";
 
 const router = Router();
 
@@ -233,9 +235,20 @@ function gerarParcelasSeguras(valorTotalFinanciado, quantidadeParcelas) {
   return parcelas;
 }
 
+router.put("/:id/aprovar", async (req, res) => {
+  try {
+    res.json(await aprovarPedido(validateId(req.params.id), req.body));
+  } catch (error) {
+    res.status(error instanceof ValidationError ? 400 : 500).json({
+      erro: error instanceof ValidationError ? error.message : "Não foi possível aprovar o pedido. Tente novamente.",
+    });
+  }
+});
+
 router.put("/:id/cancelar", async (req, res) => {
   try {
     const compraId = Number(req.params.id);
+    let apenasSolicitacao = false;
 
     const compraCancelada = await prisma.$transaction(async (tx) => {
       const compra = await tx.compra.findUnique({
@@ -252,6 +265,15 @@ router.put("/:id/cancelar", async (req, res) => {
 
       if (compra.status === "CANCELADA") {
         throw new Error("Esta compra já está cancelada.");
+      }
+
+      if (compra.status === "SOLICITADA") {
+        apenasSolicitacao = true;
+        const cancelado = await tx.compra.updateMany({
+          where: { id: compraId, status: "SOLICITADA" }, data: { status: "CANCELADA" },
+        });
+        if (!cancelado.count) throw new Error("Este pedido já foi analisado pela loja.");
+        return tx.compra.findUnique({ where: { id: compraId }, include: { itens: true, parcelas: true } });
       }
 
       for (const item of compra.itens) {
@@ -314,7 +336,7 @@ router.put("/:id/cancelar", async (req, res) => {
     });
 
     return res.json({
-      mensagem: "Compra cancelada e estoque/limite estornados com sucesso.",
+      mensagem: apenasSolicitacao ? "Solicitação de pedido cancelada." : "Compra cancelada e estoque/limite estornados com sucesso.",
       compra: compraCancelada,
     });
   } catch (error) {

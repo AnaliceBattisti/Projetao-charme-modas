@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import Campo from "../components/ui/Campo.jsx";
 import TituloPagina from "../components/ui/TituloPagina.jsx";
 import { cadastrarConta } from "../services/conta.js";
+import { formatCpf, formatTelefoneInput } from "../format.js";
 
 export default function Cadastro() {
   const [mensagem, setMensagem] = useState("");
@@ -80,16 +81,19 @@ export default function Cadastro() {
             <Campo
               label="Telefone"
               name="telefone"
+              mascara={formatTelefoneInput}
               type="tel"
               placeholder="(87) 99999-9999"
               autoComplete="tel"
               required
-              minLength={10}
+              pattern="\([0-9]{2}\) [0-9]{4,5}-[0-9]{4}"
+              title="Informe o telefone com DDD e 10 ou 11 dígitos."
               maxLength={20}
             />
             <Campo
               label="CPF"
               name="cpf"
+              mascara={formatCpf}
               placeholder="000.000.000-00"
               inputMode="numeric"
               pattern="[0-9]{3}\.?[0-9]{3}\.?[0-9]{3}-?[0-9]{2}"

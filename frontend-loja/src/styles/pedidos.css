@@ -1,0 +1,56 @@
+.cm-meus-pedidos { max-width: 1120px; }
+.cm-meus-pedidos :is(a, button, [tabindex]):focus-visible { outline: 3px solid var(--roxo); outline-offset: 3px; }
+.cm-pedidos-contagem { color: var(--texto-suave); margin: 0 0 18px; font-size: .9rem; }
+.cm-meus-pedidos-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 20px; }
+.cm-meu-pedido, .cm-pedido-secao { padding: 26px; min-width: 0; }
+.cm-meu-pedido-cabecalho { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
+.cm-meu-pedido h2, .cm-pedido-secao h2 { margin: 0 0 10px; font-size: 1.15rem; }
+.cm-meu-pedido time { color: var(--texto-suave); font-size: .88rem; }
+.cm-pedido-status { display: inline-block; border-radius: 20px; padding: 7px 12px; font-size: .8rem; font-weight: 600; line-height: 1.4; }
+.cm-pedido-status.aguardando { background: var(--blush); color: var(--vinho); }
+.cm-pedido-status.confirmado { background: #eaf5ed; color: #28613a; }
+.cm-pedido-status.cancelado { background: #fbeef0; color: #a82f49; }
+.cm-pedido-preview { overflow-wrap: anywhere; margin: 20px 0; color: var(--texto-suave); line-height: 1.6; }
+.cm-pedido-resumo-dados { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 20px; margin: 22px 0; }
+.cm-pedido-resumo-dados div { min-width: 0; }
+.cm-pedido-resumo-dados dt { color: var(--texto-suave); font-size: .84rem; margin-bottom: 7px; }
+.cm-pedido-resumo-dados dd { margin: 0; font-size: .95rem; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
+.cm-pedido-resumo-dados .cm-pedido-valor { color: var(--vinho); font-size: 1.25rem; }
+.cm-meu-pedido-acoes { border-top: 1px solid var(--borda); padding-top: 18px; display: flex; justify-content: flex-end; }
+.cm-pedidos-paginacao { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 28px; font-size: .85rem; }
+.cm-pedidos-paginacao .cm-botao { padding: 10px 14px; }
+.cm-pedido-detalhes { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; align-items: start; }
+.cm-pedido-secoes { display: grid; gap: 24px; min-width: 0; }
+.cm-pedido-acompanhamento .cm-pedido-resumo-dados { grid-template-columns: 1fr; }
+.cm-pedido-produtos { list-style: none; margin: 0; padding: 0; }
+.cm-pedido-produtos li { display: flex; gap: 18px; padding: 22px 0; border-bottom: 1px solid var(--borda); }
+.cm-pedido-produtos li:last-child { border-bottom: 0; padding-bottom: 0; }
+.cm-pedido-produto-imagem { width: 80px; height: 100px; flex-shrink: 0; border-radius: 10px; background: var(--placeholder); overflow: hidden; }
+.cm-pedido-produto-imagem img { width: 100%; height: 100%; object-fit: cover; }
+.cm-pedido-produto-descricao { min-width: 0; overflow-wrap: anywhere; }
+.cm-pedido-produto-descricao h3 { margin: 0 0 7px; font-size: 1rem; }
+.cm-pedido-produto-descricao p { margin: 5px 0; font-size: .85rem; color: var(--texto-suave); line-height: 1.6; }
+.cm-pedido-produto-descricao strong { display: block; margin-top: 8px; color: var(--vinho); }
+.cm-pedido-pagamento-forma { font-weight: 600; margin-top: 22px; }
+.cm-pedido-explicacao { color: var(--texto-suave); line-height: 1.7; font-size: .9rem; }
+.cm-pedido-parcelas { overflow-x: auto; margin-top: 24px; }
+.cm-pedido-parcelas table { width: 100%; border-collapse: collapse; text-align: left; font-size: .85rem; }
+.cm-pedido-parcelas caption { text-align: left; font-weight: 600; margin-bottom: 12px; }
+.cm-pedido-parcelas th, .cm-pedido-parcelas td { padding: 12px 8px; border-bottom: 1px solid var(--borda); white-space: nowrap; }
+.cm-pedido-parcelas th { color: var(--texto-suave); font-weight: 600; }
+.cm-pedido-estado { padding: 44px 28px; text-align: center; }
+.cm-pedido-estado h2 { margin-top: 0; font-size: 1.3rem; }
+.cm-pedido-estado p { color: var(--texto-suave); line-height: 1.7; margin-bottom: 24px; }
+.cm-pedido-estado .conta-botoes { justify-content: center; }
+@media (max-width: 850px) {
+  .cm-pedido-detalhes { grid-template-columns: minmax(0, 1fr); }
+  .cm-pedido-acompanhamento { grid-row: 1; }
+}
+@media (max-width: 600px) {
+  .cm-meu-pedido, .cm-pedido-secao { padding: 20px; }
+  .cm-meu-pedido-cabecalho { flex-wrap: wrap; }
+  .cm-pedido-resumo-dados { grid-template-columns: 1fr; gap: 16px; }
+  .cm-meu-pedido-acoes .cm-botao { width: 100%; }
+  .cm-pedido-produtos li { gap: 12px; }
+  .cm-pedido-produto-imagem { width: 64px; height: 84px; }
+}
