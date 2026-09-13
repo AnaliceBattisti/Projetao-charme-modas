@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { logout } from "../auth.js";
+import { useSessao } from "../auth.jsx";
 import { usePedidosPendentes } from "../pedidosPendentes.js";
 import {
   IconDashboard,
@@ -23,15 +23,17 @@ const links = [
   { to: "/crediario", label: "Crediário", Icon: IconCard },
   { to: "/contas-receber", label: "Contas a receber", Icon: IconDollarSign },
   { to: "/compras", label: "Compras / Vendas", Icon: IconCart, contador: "pedidos" },
+  { to: "/funcionarios", label: "Funcionários", Icon: IconUsers, somenteAdmin: true },
   { to: "/configuracoes", label: "Configurações", Icon: IconGear },
 ];
 
 export default function Layout() {
   const navigate = useNavigate();
   const { total: pedidosPendentes } = usePedidosPendentes();
+  const { funcionario, sair, ehAdmin } = useSessao();
 
-  function handleLogout() {
-    logout();
+  async function handleLogout() {
+    await sair();
     navigate("/login", { replace: true });
   }
 
@@ -49,12 +51,14 @@ export default function Layout() {
           />
           <div>
             <p className="cm-brand">Charme Modas</p>
-            <p className="cm-sidebar-subtitle">Painel administrativo</p>
+            <p className="cm-sidebar-subtitle">
+              {funcionario ? funcionario.nome : "Painel administrativo"}
+            </p>
           </div>
         </div>
 
         <nav className="cm-sidebar-nav">
-          {links.map(({ to, label, end, Icon, contador }) => (
+          {links.filter((link) => !link.somenteAdmin || ehAdmin).map(({ to, label, end, Icon, contador }) => (
             <NavLink
               key={to}
               to={to}

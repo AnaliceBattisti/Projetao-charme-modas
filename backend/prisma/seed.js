@@ -2,6 +2,7 @@ import { PrismaClient, StatusCrediario, StatusCompra, StatusParcela } from '@pri
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { gerarSenhaHash } from '../src/lib/senhas.js';
 
 const prisma = new PrismaClient();
 
@@ -26,15 +27,18 @@ async function main() {
   // 1. Limpeza em ordem reversa de dependência (desabilita FKs no Postgres para segurança)
   await prisma.$executeRawUnsafe(`TRUNCATE TABLE "Parcela", "ItemCompra", "Compra", "Crediario", "EnderecoCliente", "Cliente", "MovimentacaoEstoque", "Grade", "Variacao", "Produto", "Fornecedor", "Usuario" RESTART IDENTITY CASCADE;`);
 
-  // 2. Criar Usuário Admin
+  // 2. Criar Usuário Admin — senha de verdade, para conseguir entrar no painel.
+  // Vale só em desenvolvimento: em produção a loja troca no primeiro acesso.
+  const senhaAdmin = process.env.SENHA_ADMIN_SEED || 'charme123';
   await prisma.usuario.create({
     data: {
       nome: 'Admin Loja',
-      email: 'admin@loja.com',
-      senhaHash: '$2b$10$YourHashedPasswordHere',
+      email: 'admin@charmemodas.com',
+      senhaHash: await gerarSenhaHash(senhaAdmin),
       papel: 'ADMIN',
     },
   });
+  console.log(`👤 Admin do painel: admin@charmemodas.com / ${senhaAdmin}`);
 
   // 3. Criar Fornecedor e Produto
   const fornecedor = await prisma.fornecedor.create({

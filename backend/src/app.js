@@ -14,6 +14,7 @@ import crediarioRouter from "./routes/crediario.js";
 import comprasRouter from "./routes/compras.js";
 import parcelasRouter from "./routes/parcelas.js";
 import authRouter from "./routes/auth.js";
+import painelRouter from "./routes/painel.js";
 
 export const app = express();
 
@@ -33,6 +34,8 @@ app.use("/clientes", clientesRouter);
 app.use("/crediarios", crediarioRouter);
 app.use("/compras", comprasRouter);
 app.use("/parcelas", parcelasRouter);
+// Sessão e equipe do painel administrativo (separado do /auth, que é da loja).
+app.use("/painel", painelRouter);
 
 app.use((error, req, res, next) => {
   if (res.headersSent) return next(error);

@@ -3,6 +3,8 @@ export const BASE_URL = "http://localhost:3333";
 async function request(path, options, { rawBody = false } = {}) {
   const res = await fetch(`${BASE_URL}${path}`, {
     headers: rawBody ? undefined : { "Content-Type": "application/json" },
+    // O cookie de sessão do painel é httpOnly: precisa ir junto na requisição.
+    credentials: "include",
     ...options,
   });
   if (!res.ok) {
