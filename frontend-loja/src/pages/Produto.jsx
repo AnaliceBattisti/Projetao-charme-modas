@@ -55,13 +55,17 @@ export default function Produto() {
   }
 
   // A variação só é definida quando os eixos disponíveis foram escolhidos.
-  const variacao = produto.variacoes.find(
+  const selecaoCompleta = (!tamanhos.length || tamanho !== null) && (!cores.length || cor !== null);
+  const combinacoes = produto.variacoes.filter(
     (v) => (!tamanhos.length || v.tamanho === tamanho) && (!cores.length || v.cor === cor)
   );
+  const variacao = selecaoCompleta
+    ? combinacoes.find((v) => v.estoqueAtual > 0) ?? combinacoes[0]
+    : undefined;
 
   function disponivel(campo, valor) {
     return produto.variacoes.some((v) => {
-      if (v[campo] !== valor) return false;
+      if (v[campo] !== valor || !(v.estoqueAtual > 0)) return false;
       if (campo === "tamanho" && cor) return v.cor === cor;
       if (campo === "cor" && tamanho) return v.tamanho === tamanho;
       return true;
@@ -134,13 +138,18 @@ export default function Produto() {
           {tamanhos.length > 0 && (
             <>
               <span className="cm-campo-label">Tamanho</span>
-              <div className="cm-opcoes">
+              <div className="cm-opcoes" role="group" aria-label="Tamanho">
                 {tamanhos.map((valor) => (
                   <button
                     key={valor}
+                    type="button"
                     className={"cm-opcao-caixa" + (tamanho === valor ? " ativa" : "")}
-                    disabled={!disponivel("tamanho", valor)}
-                    onClick={() => setTamanho(valor)}
+                    aria-pressed={tamanho === valor}
+                    disabled={tamanho !== valor && !disponivel("tamanho", valor)}
+                    onClick={() => {
+                      setTamanho((atual) => atual === valor ? null : valor);
+                      setAviso(null);
+                    }}
                   >
                     {valor}
                   </button>
@@ -152,13 +161,18 @@ export default function Produto() {
           {cores.length > 0 && (
             <>
               <span className="cm-campo-label">Cor</span>
-              <div className="cm-opcoes">
+              <div className="cm-opcoes" role="group" aria-label="Cor">
                 {cores.map((valor) => (
                   <button
                     key={valor}
+                    type="button"
                     className={"cm-opcao-caixa" + (cor === valor ? " ativa" : "")}
-                    disabled={!disponivel("cor", valor)}
-                    onClick={() => setCor(valor)}
+                    aria-pressed={cor === valor}
+                    disabled={cor !== valor && !disponivel("cor", valor)}
+                    onClick={() => {
+                      setCor((atual) => atual === valor ? null : valor);
+                      setAviso(null);
+                    }}
                   >
                     {valor}
                   </button>
