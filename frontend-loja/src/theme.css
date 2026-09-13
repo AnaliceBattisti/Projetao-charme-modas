@@ -548,6 +548,29 @@ button {
   font-size: 0.88rem;
 }
 
+/* Faixa de chamada no fim de uma listagem (favoritos, por exemplo). */
+.cm-chamada {
+  background: var(--blush);
+  border: 1px solid var(--borda);
+  border-radius: 14px;
+  padding: 28px;
+  margin-top: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.cm-chamada .cm-secao-titulo {
+  margin-bottom: 6px;
+}
+
+.cm-chamada p {
+  margin: 0;
+  color: var(--texto-suave);
+}
+
 .cm-botao-bloco:disabled {
   opacity: 0.45;
   cursor: not-allowed;

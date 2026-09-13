@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useLoja } from "../estado.jsx";
 import { request } from "../api.js";
 import { consultarConta } from "../services/conta.js";
+import { linkWhatsApp, mensagemPedido } from "../data/loja.js";
 import { formatarPreco, formatTelefoneInput } from "../format.js";
 import "../styles/checkout.css";
 
@@ -85,7 +86,11 @@ export default function Checkout() {
             : "Você escolheu à vista. Entre em contato com a loja e informe o número do pedido para combinar o pagamento. Nenhum pagamento foi realizado pelo site."}</p>}
           <div className="conta-botoes">
             <Link className="cm-botao cm-botao-claro" to={`/meus-pedidos/${pedido.id}`}>Acompanhar pedido</Link>
-            {pedido.formaPagamento === "A_VISTA" && <Link className="cm-botao" to="/contato">Ver contato da loja</Link>}
+            {/* Combinar pagamento e entrega é sempre por fora, então o atalho serve
+                para os dois casos — com o número do pedido já na mensagem. */}
+            {linkWhatsApp(mensagemPedido(pedido.id))
+              ? <a className="cm-botao" href={linkWhatsApp(mensagemPedido(pedido.id))} target="_blank" rel="noreferrer">Falar no WhatsApp</a>
+              : <Link className="cm-botao" to="/contato">Ver contato da loja</Link>}
             <Link className="cm-botao cm-botao-claro" to="/catalogo">Voltar ao catálogo</Link>
           </div>
         </section>

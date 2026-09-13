@@ -6,7 +6,12 @@ import { capaDe, useProdutos } from "../produtos.js";
 export default function Home() {
   const { produtos, carregando, erro } = useProdutos();
   const destaques = produtos.slice(0, 4);
-  const capaHero = imagemUrl(destaques.map(capaDe).find(Boolean));
+  // O banner fala de moda feminina, então a foto vem de uma peça feminina —
+  // só cai para qualquer outra se ainda não houver nenhuma cadastrada com foto.
+  const femininos = produtos.filter((p) => p.categoria === "Feminino");
+  const capaHero = imagemUrl(
+    femininos.map(capaDe).find(Boolean) ?? produtos.map(capaDe).find(Boolean)
+  );
 
   return (
     <div className="cm-pagina">

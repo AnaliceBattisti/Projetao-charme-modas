@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import TituloPagina from "../components/ui/TituloPagina.jsx";
-import { loja } from "../data/loja.js";
+import { linkWhatsApp, loja } from "../data/loja.js";
 
 export default function Contato() {
   return (
@@ -50,14 +50,7 @@ export default function Contato() {
         </div>
         <div className="conta-botoes">
           {loja.whatsapp ? (
-            <a
-              className="cm-botao"
-              href={`https://wa.me/${loja.whatsapp}?text=${encodeURIComponent(
-                "Olá! Vim pelo site da Charme Modas."
-              )}`}
-              target="_blank"
-              rel="noreferrer"
-            >
+            <a className="cm-botao" href={linkWhatsApp()} target="_blank" rel="noreferrer">
               Falar no WhatsApp
             </a>
           ) : (
