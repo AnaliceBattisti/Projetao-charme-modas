@@ -70,6 +70,22 @@ export default function Estoque() {
     }
   }
 
+  // O estoque mínimo é regra de estoque, então se edita aqui mesmo, na linha.
+  async function salvarMinimo(g, valor) {
+    const novo = Number(valor);
+    if (Number.isNaN(novo) || novo === g.estoqueMinimo) return;
+    setError(null);
+    try {
+      await api.put(
+        `/produtos/${g.variacao.produtoId}/variacoes/${g.variacaoId}/grades/${g.id}`,
+        { estoqueMinimo: novo }
+      );
+      loadAll();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   function gradeLabel(g) {
     const sku = g.sku ? ` (${g.sku})` : "";
     return `${g.variacao.produto.nome} — ${g.variacao.cor} / ${g.tamanho}${sku}`;
@@ -96,7 +112,7 @@ export default function Estoque() {
         <div>
           <h1 className="cm-page-title">Estoque</h1>
           <p className="cm-page-subtitle">
-            Controle por cor e tamanho, alertas de estoque mínimo e movimentações.
+            Quantidades por cor e tamanho. O mínimo é editável na própria linha e serve de alerta.
           </p>
         </div>
         <div className="cm-page-actions">
@@ -249,12 +265,21 @@ export default function Estoque() {
                 const s = situacao(v);
                 return (
                   <tr key={v.id}>
-                    <td>{v.produto.nome}</td>
+                    <td>{v.variacao.produto.nome}</td>
                     <td>
                       {v.variacao.cor} · {v.tamanho}
                     </td>
                     <td>{v.sku || "—"}</td>
-                    <td>{v.estoqueMinimo}</td>
+                    <td>
+                      <input
+                        className="cm-input cm-input-minimo"
+                        type="number"
+                        min="0"
+                        defaultValue={v.estoqueMinimo}
+                        title="Alerta quando o estoque chegar nesse número"
+                        onBlur={(e) => salvarMinimo(v, e.target.value)}
+                      />
+                    </td>
                     <td>
                       <strong>{v.estoqueAtual}</strong>
                     </td>

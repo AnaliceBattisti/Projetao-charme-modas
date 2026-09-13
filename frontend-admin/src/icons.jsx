@@ -128,6 +128,16 @@ export function IconTrash(props) {
   );
 }
 
+export function IconImage(props) {
+  return (
+    <svg {...base} {...props}>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <circle cx="8.5" cy="9.5" r="1.6" />
+      <path d="m3.5 17 4.8-4.8a1.5 1.5 0 0 1 2.1 0l3.1 3.1a1.5 1.5 0 0 0 2.1 0l1.4-1.4a1.5 1.5 0 0 1 2.1 0l1.4 1.4" />
+    </svg>
+  );
+}
+
 export function IconChevronRight(props) {
   return (
     <svg {...base} {...props}>

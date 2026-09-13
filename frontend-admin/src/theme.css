@@ -234,6 +234,11 @@ a {
 
 .cm-thumb-placeholder {
   border: 1px dashed var(--cm-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cm-text-muted);
+  opacity: 0.7;
 }
 
 .cm-image-upload {
@@ -741,4 +746,105 @@ a {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+/* O quadrado da foto é o próprio botão de upload — clicar nele abre o seletor. */
+.cm-foto-alvo {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  border-radius: 10px;
+  border: 1px dashed var(--cm-accent);
+  background: var(--cm-surface-alt);
+  color: var(--cm-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.cm-foto-alvo:hover {
+  background: var(--cm-surface);
+  border-color: var(--cm-accent-dark);
+}
+
+.cm-foto-vazia {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.15;
+  text-align: center;
+  padding: 0 6px;
+}
+
+.cm-foto-alvo.tem-foto {
+  border-style: solid;
+  border-color: var(--cm-border);
+}
+
+.cm-foto-alvo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cm-foto-overlay {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 3px 0;
+  background: rgba(33, 26, 31, 0.72);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.cm-foto-alvo:hover .cm-foto-overlay {
+  opacity: 1;
+}
+
+/* Tabela de tamanhos: compacta, dentro do bloco da cor. */
+.cm-tabela-tamanhos th,
+.cm-tabela-tamanhos td {
+  padding-top: 7px;
+  padding-bottom: 7px;
+}
+
+.cm-tabela-tamanhos td:last-child,
+.cm-tabela-tamanhos th:last-child {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.cm-link-button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.cm-rodape-produto {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+
+.cm-rodape-produto .cm-inline-form {
+  margin-bottom: 0;
+}
+
+.cm-input-minimo {
+  width: 68px;
+  margin-bottom: 0;
+  padding: 5px 8px;
+  font-size: 0.85rem;
 }
