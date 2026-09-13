@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, json } from "express";
 import cors from "cors";
 import { prisma } from "../lib/prisma.js";
 import { gerarSenhaHash, verificarSenha } from "../lib/senhas.js";
@@ -38,6 +38,11 @@ router.use(
     credentials: true,
   })
 );
+
+// Parser próprio: como este router é montado antes do app.use(express.json())
+// global (precisa vir antes do cors() aberto, ou o preflight de login nunca
+// chegaria até aqui), depender do parser global deixaria req.body sempre vazio.
+router.use(json({ limit: "16kb" }));
 
 const SENHA_MINIMA = 8;
 

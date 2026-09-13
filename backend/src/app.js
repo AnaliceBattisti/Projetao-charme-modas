@@ -18,7 +18,13 @@ import painelRouter from "./routes/painel.js";
 
 export const app = express();
 
+// /auth e /painel precisam vir antes do cors() genérico: o pacote cors responde
+// e encerra o OPTIONS de preflight sozinho, sem chamar next(). Se o cors() aberto
+// (Allow-Origin: *) rodasse primeiro, ele responderia ao preflight de login antes
+// do CORS restrito de cada router ter a chance de agir — e o navegador bloqueia
+// wildcard combinado com credentials: "include" ("Failed to fetch").
 app.use("/auth", authRouter);
+app.use("/painel", painelRouter);
 app.use(cors());
 app.use(express.json());
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
@@ -34,8 +40,6 @@ app.use("/clientes", clientesRouter);
 app.use("/crediarios", crediarioRouter);
 app.use("/compras", comprasRouter);
 app.use("/parcelas", parcelasRouter);
-// Sessão e equipe do painel administrativo (separado do /auth, que é da loja).
-app.use("/painel", painelRouter);
 
 app.use((error, req, res, next) => {
   if (res.headersSent) return next(error);
