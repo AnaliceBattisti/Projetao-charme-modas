@@ -34,7 +34,7 @@ export default function Carrinho() {
           {itens.map((item) => {
             const foto = imagemUrl(item.imagemUrl);
             return (
-              <article className="cm-item" key={item.variacaoId}>
+              <article className="cm-item" key={item.gradeId}>
                 <Link
                   to={`/produto/${item.produtoId}`}
                   className="cm-item-imagem"
@@ -53,7 +53,7 @@ export default function Carrinho() {
                 <div className="cm-item-acoes">
                   <div className="cm-contador-qtd">
                     <button
-                      onClick={() => alterarQuantidade(item.variacaoId, -1)}
+                      onClick={() => alterarQuantidade(item.gradeId, -1)}
                       disabled={item.quantidade <= 1}
                       aria-label="Diminuir quantidade"
                     >
@@ -61,7 +61,7 @@ export default function Carrinho() {
                     </button>
                     <span>{item.quantidade}</span>
                     <button
-                      onClick={() => alterarQuantidade(item.variacaoId, 1)}
+                      onClick={() => alterarQuantidade(item.gradeId, 1)}
                       disabled={item.quantidade >= item.estoqueAtual}
                       aria-label="Aumentar quantidade"
                     >
@@ -69,7 +69,7 @@ export default function Carrinho() {
                     </button>
                   </div>
                   <br />
-                  <button className="cm-remover" onClick={() => remover(item.variacaoId)}>
+                  <button className="cm-remover" onClick={() => remover(item.gradeId)}>
                     Remover
                   </button>
                 </div>

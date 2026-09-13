@@ -20,7 +20,7 @@ export default function Dashboard() {
 
   const itensEmEstoque = variacoes.reduce((sum, v) => sum + v.estoqueAtual, 0);
   const valorEmEstoque = variacoes.reduce(
-    (sum, v) => sum + v.estoqueAtual * Number(v.produto?.precoVenda || 0),
+    (sum, g) => sum + g.estoqueAtual * Number(g.variacao?.produto?.precoVenda || 0),
     0
   );
   const alertas = variacoes.filter((v) => situacao(v).label !== "Adequado");
@@ -64,7 +64,7 @@ export default function Dashboard() {
                 return (
                   <tr key={v.id}>
                     <td>
-                      {v.produto.nome} · {v.cor || "—"}/{v.tamanho || "—"}
+                      {v.variacao.produto.nome} · {v.variacao.cor} / {v.tamanho}
                     </td>
                     <td>
                       <span className={"cm-badge " + s.badge}>{s.label}</span>

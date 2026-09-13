@@ -190,11 +190,11 @@ test("detalha histórico com itens, produtos, parcelas e crediário; protege ví
   const produto = await prisma.produto.create({ data: {
     nome: "Vestido de teste", precoCusto: "50.00", precoVenda: "100.00",
     fornecedor: { create: { nomeRazaoSocial: "Fornecedor Teste", cnpj: "teste-integracao" } },
-    variacoes: { create: { cor: "Azul", tamanho: "M" } },
-  }, include: { variacoes: true } });
+    variacoes: { create: { cor: "Azul", grades: { create: { tamanho: "M" } } } },
+  }, include: { variacoes: { include: { grades: true } } } });
   const compra = await prisma.compra.create({ data: {
     clienteId: cliente.id, data: new Date("2026-09-01T12:00:00Z"), valorTotal: "100.00", formaPagamento: "crediario",
-    itens: { create: { variacaoId: produto.variacoes[0].id, quantidade: 1, precoUnitario: "100.00" } },
+    itens: { create: { gradeId: produto.variacoes[0].grades[0].id, quantidade: 1, precoUnitario: "100.00" } },
     parcelas: { create: [
       { numero: 2, valor: "50.00", dataVencimento: new Date("2026-11-01T12:00:00Z") },
       { numero: 1, valor: "50.00", dataVencimento: new Date("2026-10-01T12:00:00Z") },
@@ -205,7 +205,7 @@ test("detalha histórico com itens, produtos, parcelas e crediário; protege ví
   const history = await request(`/clientes/${cliente.id}/compras`);
   assert.equal(history.status, 200);
   assert.deepEqual(history.data.map((entry) => entry.id), [recent.id, compra.id]);
-  assert.equal(history.data[1].itens[0].variacao.produto.nome, "Vestido de teste");
+  assert.equal(history.data[1].itens[0].grade.variacao.produto.nome, "Vestido de teste");
   assert.deepEqual(history.data[1].parcelas.map((entry) => entry.numero), [1, 2]);
   const comDivida = await request(`/clientes/${cliente.id}`, { method: "DELETE" });
   assert.equal(comDivida.status, 409);
@@ -267,12 +267,12 @@ test("cliente cadastrado integra bloqueio, compra, parcelas, alteração de limi
   const produto = await prisma.produto.create({ data: {
     nome: "Produto para integração de crediário", precoCusto: "50.00", precoVenda: "75.00",
     fornecedor: { create: { nomeRazaoSocial: "Fornecedor integração de crediário", cnpj: "teste-fluxo-crediario" } },
-    variacoes: { create: { cor: "Verde", tamanho: "M", estoqueAtual: 10 } },
-  }, include: { variacoes: true } });
-  const variacaoId = produto.variacoes[0].id;
+    variacoes: { create: { cor: "Verde", grades: { create: { tamanho: "M", estoqueAtual: 10 } } } },
+  }, include: { variacoes: { include: { grades: true } } } });
+  const gradeId = produto.variacoes[0].grades[0].id;
   const pedido = {
     clienteId: cliente.id, formaPagamento: "crediario", numeroParcelas: 2,
-    itens: [{ variacaoId, quantidade: 2, precoUnitario: "75.00" }],
+    itens: [{ gradeId, quantidade: 2, precoUnitario: "75.00" }],
   };
 
   assert.equal((await request(`/crediarios/${creditoId}/bloqueio/true`, { method: "POST" })).status, 200);
@@ -283,20 +283,20 @@ test("cliente cadastrado integra bloqueio, compra, parcelas, alteração de limi
   assert.equal((await request(`/crediarios/${creditoId}/bloqueio/false`, { method: "POST" })).status, 200);
 
   const overLimit = await request("/compras", { method: "POST", body: {
-    ...pedido, itens: [{ variacaoId, quantidade: 3, precoUnitario: "75.00" }],
+    ...pedido, itens: [{ gradeId, quantidade: 3, precoUnitario: "75.00" }],
   } });
   assert.equal(overLimit.status, 400);
   assert.match(overLimit.data.erro, /insuficiente/);
   assert.equal(await prisma.compra.count({ where: { clienteId: cliente.id } }), 0);
-  assert.equal((await prisma.variacao.findUnique({ where: { id: variacaoId } })).estoqueAtual, 10);
-  assert.equal(await prisma.movimentacaoEstoque.count({ where: { variacaoId } }), 0);
+  assert.equal((await prisma.grade.findUnique({ where: { id: gradeId } })).estoqueAtual, 10);
+  assert.equal(await prisma.movimentacaoEstoque.count({ where: { gradeId } }), 0);
 
   const compra = await request("/compras", { method: "POST", body: pedido });
   assert.equal(compra.status, 201, JSON.stringify(compra.data));
   assert.equal(Number(compra.data.valorTotal), 150);
   const parcelas = [...compra.data.parcelas].sort((a, b) => a.numero - b.numero);
   assert.deepEqual(parcelas.map((parcela) => Number(parcela.valor)), [75, 75]);
-  assert.equal((await prisma.variacao.findUnique({ where: { id: variacaoId } })).estoqueAtual, 8);
+  assert.equal((await prisma.grade.findUnique({ where: { id: gradeId } })).estoqueAtual, 8);
   assert.equal(Number((await request(`/clientes/${cliente.id}`)).data.crediario.limiteDisponivel), 0);
   assert.equal((await request(`/clientes/${cliente.id}/compras`)).data[0].id, compra.data.id);
   const listed = await request("/parcelas?dias=90");

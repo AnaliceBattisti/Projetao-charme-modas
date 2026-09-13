@@ -41,7 +41,7 @@ export default function Checkout() {
     try {
       const dados = {
         formaPagamento,
-        itens: itens.map(({ variacaoId, quantidade }) => ({ variacaoId, quantidade })),
+        itens: itens.map(({ gradeId, quantidade }) => ({ gradeId, quantidade })),
       };
       const assinatura = JSON.stringify({ clienteId: usuario.clienteId, ...dados });
       // Mantém a mesma chave ao tentar novamente após falha de conexão ou recarga.
@@ -139,7 +139,7 @@ export default function Checkout() {
         <aside className="cm-resumo">
           <h2>Resumo do pedido</h2>
           <ul className="cm-checkout-itens">
-            {itens.map((item) => <li key={item.variacaoId}>
+            {itens.map((item) => <li key={item.gradeId}>
               <div><strong>{item.nome}</strong><small>{item.tamanho || "Tamanho único"} · {item.cor || "Cor única"} · Qtd. {item.quantidade}</small></div>
               <span>{formatarPreco(item.quantidade * Number(item.precoUnitario))}</span>
             </li>)}

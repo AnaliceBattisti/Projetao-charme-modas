@@ -4,6 +4,7 @@ import { useLoja } from "../estado.jsx";
 import { formatarPreco } from "../format.js";
 import { capaDe, ehNovidade, estoqueDe } from "../produtos.js";
 import { IconeCoracao } from "../icons.jsx";
+import BolinhasCor from "./BolinhasCor.jsx";
 
 export default function ProdutoCard({ produto }) {
   const { ehFavorito, alternarFavorito } = useLoja();
@@ -31,6 +32,8 @@ export default function ProdutoCard({ produto }) {
       <h3 className="cm-card-nome">
         <Link to={`/produto/${produto.id}`}>{produto.nome}</Link>
       </h3>
+
+      <BolinhasCor variacoes={produto.variacoes} />
 
       <div className="cm-card-linha">
         <span className="cm-preco">{formatarPreco(produto.precoVenda)}</span>

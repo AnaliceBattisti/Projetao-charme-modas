@@ -343,10 +343,10 @@ export default function Compras() {
                   {compraEmFoco.itens.map((item) => (
                     <tr key={item.id}>
                       <td>
-                        {item.variacao?.produto?.nome || "Produto"}{" "}
+                        {item.grade?.variacao?.produto?.nome || "Produto"}{" "}
                         <small className="cm-text-muted">
-                          ({item.variacao?.cor || "—"}/
-                          {item.variacao?.tamanho || "—"})
+                          ({item.grade?.variacao?.cor || "—"}/
+                          {item.grade?.tamanho || "—"})
                         </small>
                       </td>
                       <td>{item.quantidade}</td>

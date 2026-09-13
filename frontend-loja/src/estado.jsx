@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 // Carrinho e favoritos continuam locais, independentes da sessão da conta.
 // Os IDs são dos produtos e variações reais retornados pela API.
-const CHAVE_CARRINHO = "cm_carrinho";
+const CHAVE_CARRINHO = "cm_carrinho_v2";
 const CHAVE_FAVORITOS = "cm_favoritos";
 
 function ler(chave, padrao) {
@@ -34,25 +34,25 @@ export function LojaProvider({ children }) {
   const valor = useMemo(() => {
     function adicionar(item, quantidade = 1) {
       setItens((atuais) => {
-        const existente = atuais.find((i) => i.variacaoId === item.variacaoId);
+        const existente = atuais.find((i) => i.gradeId === item.gradeId);
         if (!existente) return [...atuais, { ...item, quantidade }];
         const somada = Math.min(existente.quantidade + quantidade, item.estoqueAtual);
-        return atuais.map((i) => (i.variacaoId === item.variacaoId ? { ...i, quantidade: somada } : i));
+        return atuais.map((i) => (i.gradeId === item.gradeId ? { ...i, quantidade: somada } : i));
       });
     }
 
-    function alterarQuantidade(variacaoId, delta) {
+    function alterarQuantidade(gradeId, delta) {
       setItens((atuais) =>
         atuais.map((i) =>
-          i.variacaoId === variacaoId
+          i.gradeId === gradeId
             ? { ...i, quantidade: Math.min(Math.max(i.quantidade + delta, 1), i.estoqueAtual) }
             : i
         )
       );
     }
 
-    function remover(variacaoId) {
-      setItens((atuais) => atuais.filter((i) => i.variacaoId !== variacaoId));
+    function remover(gradeId) {
+      setItens((atuais) => atuais.filter((i) => i.gradeId !== gradeId));
     }
 
     function alternarFavorito(produtoId) {

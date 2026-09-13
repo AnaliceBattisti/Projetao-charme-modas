@@ -5,6 +5,7 @@ import { useLoja } from "../estado.jsx";
 import { formatarPreco, parcelaSemJuros } from "../format.js";
 import { useProdutos } from "../produtos.js";
 import { IconeCheck } from "../icons.jsx";
+import { corEhClara, corHex } from "../cores.js";
 
 const GARANTIAS = [
   "Compra segura",
@@ -26,14 +27,20 @@ export default function Produto() {
 
   const produto = produtos.find((p) => String(p.id) === id);
 
-  const tamanhos = useMemo(
-    () => [...new Set((produto?.variacoes ?? []).map((v) => v.tamanho).filter(Boolean))],
-    [produto]
-  );
+  // A cor é a variação; os tamanhos são as grades dentro dela.
   const cores = useMemo(
-    () => [...new Set((produto?.variacoes ?? []).map((v) => v.cor).filter(Boolean))],
+    () => (produto?.variacoes ?? []).map((v) => v.cor).filter(Boolean),
     [produto]
   );
+  const variacaoSelecionada = useMemo(
+    () => (produto?.variacoes ?? []).find((v) => v.cor === cor) ?? null,
+    [produto, cor]
+  );
+  // Sem cor escolhida, mostramos todos os tamanhos que o produto tem.
+  const tamanhos = useMemo(() => {
+    const origem = variacaoSelecionada ? [variacaoSelecionada] : produto?.variacoes ?? [];
+    return [...new Set(origem.flatMap((v) => (v.grades ?? []).map((g) => g.tamanho)))];
+  }, [produto, variacaoSelecionada]);
   const fotos = useMemo(
     () => (produto?.variacoes ?? []).map((v) => v.imagemUrl).filter(Boolean),
     [produto]
@@ -54,46 +61,51 @@ export default function Produto() {
     );
   }
 
-  // A variação só é definida quando os eixos disponíveis foram escolhidos.
-  const selecaoCompleta = (!tamanhos.length || tamanho !== null) && (!cores.length || cor !== null);
-  const combinacoes = produto.variacoes.filter(
-    (v) => (!tamanhos.length || v.tamanho === tamanho) && (!cores.length || v.cor === cor)
-  );
-  const variacao = selecaoCompleta
-    ? combinacoes.find((v) => v.estoqueAtual > 0) ?? combinacoes[0]
-    : undefined;
+  // Escolher cor + tamanho resolve uma grade, que é o que se vende.
+  const grade =
+    variacaoSelecionada && tamanho
+      ? (variacaoSelecionada.grades ?? []).find((g) => g.tamanho === tamanho) ?? null
+      : null;
 
-  function disponivel(campo, valor) {
-    return produto.variacoes.some((v) => {
-      if (v[campo] !== valor || !(v.estoqueAtual > 0)) return false;
-      if (campo === "tamanho" && cor) return v.cor === cor;
-      if (campo === "cor" && tamanho) return v.tamanho === tamanho;
-      return true;
-    });
+  // Uma cor está disponível se tiver qualquer grade com estoque (respeitando o
+  // tamanho já escolhido); um tamanho está disponível dentro da cor escolhida.
+  function corDisponivel(valorCor) {
+    const variacao = produto.variacoes.find((v) => v.cor === valorCor);
+    return (variacao?.grades ?? []).some(
+      (g) => g.estoqueAtual > 0 && (!tamanho || g.tamanho === tamanho)
+    );
   }
 
-  const capa = imagemUrl(imagemAtiva ?? variacao?.imagemUrl ?? fotos[0] ?? null);
-  const semEstoque = !variacao || variacao.estoqueAtual <= 0;
+  function tamanhoDisponivel(valorTamanho) {
+    const origem = variacaoSelecionada ? [variacaoSelecionada] : produto.variacoes;
+    return origem.some((v) =>
+      (v.grades ?? []).some((g) => g.tamanho === valorTamanho && g.estoqueAtual > 0)
+    );
+  }
+
+  // A foto acompanha a cor escolhida.
+  const capa = imagemUrl(imagemAtiva ?? variacaoSelecionada?.imagemUrl ?? fotos[0] ?? null);
+  const semEstoque = !grade || grade.estoqueAtual <= 0;
 
   function aoAdicionar(irParaCarrinho) {
-    if (!variacao) {
-      setAviso("Escolha tamanho e cor antes de adicionar.");
+    if (!grade) {
+      setAviso("Escolha a cor e o tamanho antes de adicionar.");
       return;
     }
-    if (variacao.estoqueAtual <= 0) {
+    if (grade.estoqueAtual <= 0) {
       setAviso("Essa combinação está sem estoque.");
       return;
     }
     setAviso(null);
     adicionar({
-      variacaoId: variacao.id,
+      gradeId: grade.id,
       produtoId: produto.id,
       nome: produto.nome,
-      cor: variacao.cor,
-      tamanho: variacao.tamanho,
+      cor: variacaoSelecionada.cor,
+      tamanho: grade.tamanho,
       precoUnitario: Number(produto.precoVenda),
-      imagemUrl: variacao.imagemUrl,
-      estoqueAtual: variacao.estoqueAtual,
+      imagemUrl: variacaoSelecionada.imagemUrl,
+      estoqueAtual: grade.estoqueAtual,
     });
     if (irParaCarrinho) navigate("/carrinho");
   }
@@ -145,7 +157,7 @@ export default function Produto() {
                     type="button"
                     className={"cm-opcao-caixa" + (tamanho === valor ? " ativa" : "")}
                     aria-pressed={tamanho === valor}
-                    disabled={tamanho !== valor && !disponivel("tamanho", valor)}
+                    disabled={tamanho !== valor && !tamanhoDisponivel(valor)}
                     onClick={() => {
                       setTamanho((atual) => atual === valor ? null : valor);
                       setAviso(null);
@@ -168,12 +180,23 @@ export default function Produto() {
                     type="button"
                     className={"cm-opcao-caixa" + (cor === valor ? " ativa" : "")}
                     aria-pressed={cor === valor}
-                    disabled={cor !== valor && !disponivel("cor", valor)}
+                    disabled={cor !== valor && !corDisponivel(valor)}
                     onClick={() => {
                       setCor((atual) => atual === valor ? null : valor);
                       setAviso(null);
                     }}
                   >
+                    <span
+                      className={
+                        "cm-bolinha" +
+                        (corHex(valor)
+                          ? corEhClara(corHex(valor))
+                            ? " cm-bolinha-clara"
+                            : ""
+                          : " cm-bolinha-desconhecida")
+                      }
+                      style={corHex(valor) ? { background: corHex(valor) } : undefined}
+                    />
                     {valor}
                   </button>
                 ))}
@@ -182,7 +205,7 @@ export default function Produto() {
           )}
 
           {aviso && <p className="cm-erro">{aviso}</p>}
-          {variacao && semEstoque && <p className="cm-erro">Essa combinação está esgotada.</p>}
+          {grade && semEstoque && <p className="cm-erro">Essa combinação está esgotada.</p>}
 
           <div className="cm-produto-acoes">
             <button className="cm-botao" onClick={() => aoAdicionar(false)} disabled={semEstoque}>

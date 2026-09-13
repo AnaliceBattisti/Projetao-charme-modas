@@ -28,12 +28,20 @@ export function useProdutos() {
   return { produtos: produtos ?? [], carregando: !produtos && !erro, erro };
 }
 
-/** Soma o estoque de todas as variações do produto. */
+/** Soma o estoque de todas as grades de todas as cores do produto. */
 export function estoqueDe(produto) {
-  return produto.variacoes.reduce((total, v) => total + v.estoqueAtual, 0);
+  return produto.variacoes.reduce(
+    (total, v) => total + v.grades.reduce((soma, g) => soma + g.estoqueAtual, 0),
+    0
+  );
 }
 
-/** Primeira variação com foto — usada como capa nos cards e na vitrine. */
+/** Grades de uma cor que ainda têm peça disponível. */
+export function gradesDisponiveis(variacao) {
+  return (variacao.grades ?? []).filter((g) => g.estoqueAtual > 0);
+}
+
+/** Primeira cor com foto — usada como capa nos cards e na vitrine. */
 export function capaDe(produto) {
   return produto.variacoes.find((v) => v.imagemUrl)?.imagemUrl ?? null;
 }
@@ -54,8 +62,10 @@ export function categoriasDe(produtos) {
 }
 
 export function tamanhosDe(produtos) {
-  const tamanhos = produtos.flatMap((p) => p.variacoes.map((v) => v.tamanho).filter(Boolean));
-  return [...new Set(tamanhos)];
+  const tamanhos = produtos.flatMap((p) =>
+    p.variacoes.flatMap((v) => (v.grades ?? []).map((g) => g.tamanho))
+  );
+  return [...new Set(tamanhos.filter(Boolean))];
 }
 
 export function coresDe(produtos) {
