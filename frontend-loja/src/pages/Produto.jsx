@@ -7,9 +7,14 @@ import { useProdutos } from "../produtos.js";
 import { IconeCheck } from "../icons.jsx";
 import { corEhClara, corHex } from "../cores.js";
 
+// O máximo de parcelas que o admin consegue aprovar no crediário (aprovarPedido).
+const PARCELAS_CREDIARIO = 6;
+
+// Só promessa que a loja cumpre: não existe pagamento online, o pedido é enviado
+// para a loja aprovar e o pagamento é combinado com a equipe.
 const GARANTIAS = [
-  "Compra segura",
-  "Pix, cartão e boleto",
+  "Crediário próprio da loja",
+  "Pagamento combinado com a equipe",
   "Acompanhe o status do pedido",
   "Trocas conforme política da loja",
 ];
@@ -142,7 +147,8 @@ export default function Produto() {
           <h1>{produto.nome}</h1>
           <p className="cm-produto-preco">{formatarPreco(produto.precoVenda)}</p>
           <p className="cm-produto-parcelas">
-            até 3x de {parcelaSemJuros(produto.precoVenda)} sem juros
+            até {PARCELAS_CREDIARIO}x de {parcelaSemJuros(produto.precoVenda, PARCELAS_CREDIARIO)} sem
+            juros no crediário da loja
           </p>
 
           {produto.descricao && <p className="cm-produto-descricao">{produto.descricao}</p>}

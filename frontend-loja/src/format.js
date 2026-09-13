@@ -4,8 +4,9 @@ export function formatarPreco(valor) {
   return moeda.format(Number(valor) || 0);
 }
 
-// A vitrine anuncia "até 3x sem juros"; o valor da parcela é só a divisão simples.
-export function parcelaSemJuros(valor, vezes = 3) {
+// Parcela do crediário da loja: divisão simples, sem juros — é assim que o admin
+// gera as parcelas ao aprovar o pedido.
+export function parcelaSemJuros(valor, vezes = 6) {
   return moeda.format((Number(valor) || 0) / vezes);
 }
 
