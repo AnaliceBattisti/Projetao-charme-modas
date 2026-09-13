@@ -5,15 +5,15 @@ import EmBreve from "./EmBreve.jsx";
 const assuntos = {
   trocas: [
     "Trocas e devoluções",
-    "As condições de troca e devolução serão disponibilizadas antes do início das vendas online. Para informações sobre a loja física, consulte nossos canais de atendimento.",
+    "As trocas são feitas na loja física, em Garanhuns/PE: leve a peça junto com o número do pedido e a equipe combina a troca com você. As condições completas de troca e devolução serão publicadas pela loja.",
   ],
   privacidade: [
     "Privacidade",
-    "O cadastro envia seu nome, e-mail, CPF, telefone e senha ao servidor da Charme Modas. Os dados pessoais e endereços ficam no cadastro de cliente, e a senha é armazenada como hash. O acesso usa um cookie de sessão. Sua sacola e seus favoritos ficam neste navegador. O checkout ainda não finaliza compras. As informações completas de privacidade serão disponibilizadas pela loja.",
+    "O cadastro envia seu nome, e-mail, CPF, telefone e senha ao servidor da Charme Modas. Os dados pessoais e endereços ficam no cadastro de cliente, e a senha é armazenada como hash. O acesso usa um cookie de sessão. Sua sacola e seus favoritos ficam salvos apenas neste navegador. O site não recebe nenhum dado de pagamento: não há cartão, Pix ou boleto processado aqui, o pagamento é combinado direto com a loja. As informações completas de privacidade serão disponibilizadas pela loja.",
   ],
   termos: [
     "Termos de uso",
-    "A loja permite consultar os produtos cadastrados, criar uma conta, entrar e editar seus dados e endereços. O checkout e o pagamento online ainda não estão disponíveis. As condições comerciais completas serão publicadas antes do início das vendas online.",
+    "Nesta loja você consulta os produtos, cria uma conta e envia pedidos para a Charme Modas. O pedido enviado é uma solicitação: a loja confere a disponibilidade das peças e, no crediário, o seu limite e as parcelas, antes de aprovar. Não existe pagamento online — o pagamento e a entrega ou retirada são combinados diretamente com a equipe. Os preços podem mudar até a aprovação do pedido. As condições comerciais completas serão publicadas pela loja.",
   ],
 };
 export default function Informacoes() {

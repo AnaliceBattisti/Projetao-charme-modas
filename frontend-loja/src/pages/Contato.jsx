@@ -14,9 +14,7 @@ export default function Contato() {
           <article>
             <h2>Endereço</h2>
             <strong>{loja.endereco || `Nossa loja em ${loja.cidade}`}</strong>
-            {!loja.endereco && (
-              <p>O endereço completo estará disponível em breve.</p>
-            )}
+            <p>{loja.endereco ? loja.cidade : "O endereço completo estará disponível em breve."}</p>
           </article>
           <article>
             <h2>WhatsApp e telefone</h2>
@@ -54,7 +52,9 @@ export default function Contato() {
           {loja.whatsapp ? (
             <a
               className="cm-botao"
-              href={`https://wa.me/${loja.whatsapp}`}
+              href={`https://wa.me/${loja.whatsapp}?text=${encodeURIComponent(
+                "Olá! Vim pelo site da Charme Modas."
+              )}`}
               target="_blank"
               rel="noreferrer"
             >

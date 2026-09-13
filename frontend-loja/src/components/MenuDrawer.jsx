@@ -8,10 +8,10 @@ const itens = [
   { to: "/favoritos", label: "Favoritos" },
   { to: "/conta", label: "Minha conta" },
   { to: "/meus-pedidos", label: "Meus pedidos" },
-  { to: "/carrinho", label: "Sacola" },
+  { to: "/carrinho", label: "Carrinho" },
 ];
 
-export default function MenuDrawer({ aberto, onFechar, categorias = [] }) {
+export default function MenuDrawer({ aberto, onFechar }) {
   if (!aberto) return null;
 
   return (
@@ -41,17 +41,6 @@ export default function MenuDrawer({ aberto, onFechar, categorias = [] }) {
               className={({ isActive }) => "cm-menu-item" + (isActive ? " ativo" : "")}
             >
               {item.label}
-            </NavLink>
-          ))}
-          {/* As categorias vêm dos produtos cadastrados, não de uma lista fixa. */}
-          {categorias.map((categoria) => (
-            <NavLink
-              key={categoria}
-              to={`/catalogo?categoria=${encodeURIComponent(categoria)}`}
-              onClick={onFechar}
-              className="cm-menu-item"
-            >
-              {categoria}
             </NavLink>
           ))}
         </nav>
