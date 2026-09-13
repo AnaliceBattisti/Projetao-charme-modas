@@ -509,9 +509,48 @@ button {
   color: #fff;
 }
 
+.cm-pilula-cor {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.cm-pilula.ativa .cm-bolinha {
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.cm-preco-campos {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.cm-preco-campo {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  background: var(--superficie);
+  color: var(--texto);
+  font-size: 0.85rem;
+  font-family: inherit;
+}
+
+.cm-preco-campo:focus {
+  outline: 2px solid var(--rosa);
+  outline-offset: -1px;
+}
+
 .cm-faixa-preco {
   color: var(--texto-suave);
   font-size: 0.88rem;
+}
+
+.cm-botao-bloco:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 /* ---------- Produto ---------- */
