@@ -33,7 +33,19 @@ router.put("/:id", async (req, res) => {
 });
 
 router.delete("/:id", async (req, res) => {
-  await prisma.fornecedor.delete({ where: { id: Number(req.params.id) } });
+  const id = Number(req.params.id);
+  // Mesma ideia da trava de produto/variação: explicar o motivo em vez de deixar
+  // o banco recusar a chave estrangeira.
+  const { _count } = await prisma.fornecedor.findUniqueOrThrow({
+    where: { id },
+    select: { _count: { select: { produtos: true } } },
+  });
+  if (_count.produtos > 0) {
+    return res.status(400).json({
+      error: `Este fornecedor tem ${_count.produtos} produto(s) cadastrado(s). Remova ou troque o fornecedor desses produtos antes de excluir.`,
+    });
+  }
+  await prisma.fornecedor.delete({ where: { id } });
   res.status(204).send();
 });
 
