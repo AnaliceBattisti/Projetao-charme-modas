@@ -716,3 +716,29 @@ a {
   font-weight: 600;
   cursor: pointer;
 }
+
+/* ---------- Cores e grades do produto (painel) ---------- */
+
+.cm-cor-bloco {
+  border: 1px solid var(--cm-border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  background: var(--cm-surface);
+}
+
+.cm-cor-cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.cm-acoes-cor {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}

@@ -32,7 +32,7 @@ function ListaPedidos({ dados }) {
     <ol className="cm-meus-pedidos-lista">
       {dados.pedidos.map((pedido) => {
         const quantidade = pedido.itens.reduce((total, item) => total + item.quantidade, 0);
-        const nomes = [...new Set(pedido.itens.map((item) => item.variacao.produto.nome))];
+        const nomes = [...new Set(pedido.itens.map((item) => item.grade.variacao.produto.nome))];
         return <li key={pedido.id} className="conta-card cm-meu-pedido">
           <header className="cm-meu-pedido-cabecalho">
             <div><h2>Pedido #{pedido.id}</h2><time dateTime={pedido.data}>{formatarData(pedido.data)}</time></div>
@@ -68,7 +68,8 @@ function DetalhesPedido({ pedido }) {
         <h2 id="pedido-itens-titulo">Itens do pedido</h2>
         <ul className="cm-pedido-produtos">
           {pedido.itens.map((item) => {
-            const { variacao } = item;
+            const { grade } = item;
+            const { variacao } = grade;
             const foto = imagemUrl(variacao.imagemUrl);
             return <li key={item.id}>
               <Link to={`/produto/${variacao.produto.id}`} className="cm-pedido-produto-imagem" aria-label={`Ver ${variacao.produto.nome} no catálogo`}>
@@ -76,7 +77,7 @@ function DetalhesPedido({ pedido }) {
               </Link>
               <div className="cm-pedido-produto-descricao">
                 <h3><Link to={`/produto/${variacao.produto.id}`}>{variacao.produto.nome}</Link></h3>
-                <p>Tamanho {variacao.tamanho || "único"} · {variacao.cor || "Cor única"}</p>
+                <p>Tamanho {grade.tamanho || "único"} · {variacao.cor || "Cor única"}</p>
                 <p>Quantidade: {item.quantidade} · {formatarPreco(item.precoUnitario)} cada</p>
                 <strong>{formatarPreco(item.quantidade * Number(item.precoUnitario))}</strong>
               </div>

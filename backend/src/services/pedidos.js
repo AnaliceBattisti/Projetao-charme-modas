@@ -3,7 +3,7 @@ import { prisma } from "../lib/prisma.js";
 import { ValidationError } from "../validation/clientes.js";
 
 const incluirItens = {
-  itens: { include: { variacao: { select: { cor: true, tamanho: true, produto: { select: { nome: true } } } } } },
+  itens: { include: { grade: { select: { tamanho: true, variacao: { select: { cor: true, produto: { select: { nome: true } } } } } } } },
 };
 const invalid = (message) => { throw new ValidationError(message); };
 const inteiro = (value, max) => Number.isInteger(value) && value > 0 && value <= max;
@@ -22,7 +22,7 @@ export async function listarPedidos(clienteId, pagina = 1) {
       take: porPagina, skip: (pagina - 1) * porPagina,
       select: {
         ...resumoPedido,
-        itens: { orderBy: { id: "asc" }, select: { quantidade: true, variacao: { select: { produto: { select: { nome: true } } } } } },
+        itens: { orderBy: { id: "asc" }, select: { quantidade: true, grade: { select: { variacao: { select: { produto: { select: { nome: true } } } } } } } },
       },
     }),
   ]);
@@ -38,7 +38,7 @@ export function consultarPedido(clienteId, id) {
         orderBy: { id: "asc" },
         select: {
           id: true, quantidade: true, precoUnitario: true,
-          variacao: { select: { cor: true, tamanho: true, imagemUrl: true, produto: { select: { id: true, nome: true } } } },
+          grade: { select: { tamanho: true, variacao: { select: { cor: true, imagemUrl: true, produto: { select: { id: true, nome: true } } } } } },
         },
       },
       parcelas: { orderBy: { numero: "asc" }, select: { numero: true, valor: true, dataVencimento: true, status: true } },
@@ -63,11 +63,11 @@ function validarPedido(body) {
   const ids = new Set();
   for (const item of body.itens) {
     if (!item || typeof item !== "object" || Array.isArray(item) ||
-      Object.keys(item).some((key) => !["variacaoId", "quantidade"].includes(key)) ||
-      !inteiro(item.variacaoId, 2147483647) || !inteiro(item.quantidade, 99) || ids.has(item.variacaoId)) {
+      Object.keys(item).some((key) => !["gradeId", "quantidade"].includes(key)) ||
+      !inteiro(item.gradeId, 2147483647) || !inteiro(item.quantidade, 99) || ids.has(item.gradeId)) {
       invalid("Informe produtos distintos e quantidades inteiras entre 1 e 99.");
     }
-    ids.add(item.variacaoId);
+    ids.add(item.gradeId);
   }
   return body;
 }
@@ -75,7 +75,7 @@ function validarPedido(body) {
 function conferirReenvio(pedido, clienteId, dados) {
   if (pedido.clienteId !== clienteId || pedido.formaPagamento !== dados.formaPagamento ||
     pedido.itens.length !== dados.itens.length || dados.itens.some((item) =>
-      !pedido.itens.some((salvo) => salvo.variacaoId === item.variacaoId && salvo.quantidade === item.quantidade))) {
+      !pedido.itens.some((salvo) => salvo.gradeId === item.gradeId && salvo.quantidade === item.quantidade))) {
     invalid("A identificação já pertence a outro pedido. Atualize a página e tente novamente.");
   }
   return pedido;
@@ -88,19 +88,19 @@ export async function enviarPedido(clienteId, body) {
 
   try {
     return await prisma.$transaction(async (tx) => {
-      const variacoes = await tx.variacao.findMany({
-        where: { id: { in: dados.itens.map((item) => item.variacaoId) } },
-        include: { produto: true },
+      const grades = await tx.grade.findMany({
+        where: { id: { in: dados.itens.map((item) => item.gradeId) } },
+        include: { variacao: { include: { produto: true } } },
       });
       let valorTotal = new Prisma.Decimal(0);
       const itens = dados.itens.map((item) => {
-        const variacao = variacoes.find((v) => v.id === item.variacaoId);
-        if (!variacao) invalid("Um produto não está mais disponível. Revise seu carrinho.");
-        if (variacao.estoqueAtual < item.quantidade) invalid(`Quantidade indisponível para ${variacao.produto.nome}. Revise seu carrinho.`);
-        const precoUnitario = variacao.produto.precoVenda;
+        const grade = grades.find((g) => g.id === item.gradeId);
+        if (!grade) invalid("Um produto não está mais disponível. Revise seu carrinho.");
+        if (grade.estoqueAtual < item.quantidade) invalid(`Quantidade indisponível para ${grade.variacao.produto.nome}. Revise seu carrinho.`);
+        const precoUnitario = grade.variacao.produto.precoVenda;
         if (precoUnitario.lte(0)) invalid("Um produto está sem preço disponível. Fale com a loja.");
         valorTotal = valorTotal.plus(precoUnitario.times(item.quantidade));
-        return { variacaoId: item.variacaoId, quantidade: item.quantidade, precoUnitario };
+        return { gradeId: item.gradeId, quantidade: item.quantidade, precoUnitario };
       });
       if (valorTotal.gt("99999999.99")) invalid("O valor do pedido excede o permitido. Fale com a loja.");
       // A solicitação não reserva estoque, não consome limite e não gera cobrança.
@@ -135,14 +135,14 @@ export async function aprovarPedido(id, body = {}) {
     if (!["CREDIARIO", "A_VISTA"].includes(pedido.formaPagamento)) invalid("Opção do pedido inválida.");
     if (pedido.formaPagamento === "A_VISTA" && numeroParcelas !== 1) invalid("O pedido à vista não possui parcelas.");
 
-    for (const item of [...pedido.itens].sort((a, b) => a.variacaoId - b.variacaoId)) {
-      const estoque = await tx.variacao.updateMany({
-        where: { id: item.variacaoId, estoqueAtual: { gte: item.quantidade } },
+    for (const item of [...pedido.itens].sort((a, b) => a.gradeId - b.gradeId)) {
+      const estoque = await tx.grade.updateMany({
+        where: { id: item.gradeId, estoqueAtual: { gte: item.quantidade } },
         data: { estoqueAtual: { decrement: item.quantidade } },
       });
       if (!estoque.count) invalid("Estoque insuficiente para aprovar o pedido.");
       await tx.movimentacaoEstoque.create({
-        data: { variacaoId: item.variacaoId, quantidade: item.quantidade, tipo: "SAIDA", motivo: `Pedido da loja #${pedido.id} aprovado` },
+        data: { gradeId: item.gradeId, quantidade: item.quantidade, tipo: "SAIDA", motivo: `Pedido da loja #${pedido.id} aprovado` },
       });
     }
 

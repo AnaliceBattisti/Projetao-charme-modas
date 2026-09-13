@@ -15,8 +15,8 @@ export default function NovaCompra() {
   const [itens, setItens] = useState([]);
 
   const [produtoSelecionadoId, setProdutoSelecionadoId] = useState("");
-  const [variacoesDisponiveis, setVariacoesDisponiveis] = useState([]);
-  const [variacaoId, setVariacaoId] = useState("");
+  const [gradesDisponiveis, setGradesDisponiveis] = useState([]);
+  const [gradeId, setGradeId] = useState("");
   const [quantidade, setQuantidade] = useState("");
   const [precoUnitario, setPrecoUnitario] = useState("");
 
@@ -34,7 +34,7 @@ export default function NovaCompra() {
       const listaProdutos = Array.isArray(data) ? data : [];
 
       const produtosComEstoque = listaProdutos.filter((prod) =>
-        prod.variacoes && prod.variacoes.some((v) => v.estoqueAtual > 0)
+        prod.variacoes && prod.variacoes.some((v) => (v.grades || []).some((g) => g.estoqueAtual > 0))
       );
 
       setProdutos(produtosComEstoque);
@@ -60,7 +60,7 @@ export default function NovaCompra() {
 
   const handleProdutoChange = (id) => {
     setProdutoSelecionadoId(id);
-    setVariacaoId("");
+    setGradeId("");
     if (!id) {
       setVariacoesDisponiveis([]);
       setPrecoUnitario("");
@@ -69,29 +69,31 @@ export default function NovaCompra() {
 
     const prod = produtos.find((p) => String(p.id) === String(id));
     if (prod) {
-      const variacoesComEstoque = (prod.variacoes || []).filter(
-        (v) => v.estoqueAtual > 0
+      const gradesComEstoque = (prod.variacoes || []).flatMap((v) =>
+        (v.grades || [])
+          .filter((g) => g.estoqueAtual > 0)
+          .map((g) => ({ ...g, cor: v.cor }))
       );
-      setVariacoesDisponiveis(variacoesComEstoque);
+      setGradesDisponiveis(gradesComEstoque);
       setQuantidade(1)
       setPrecoUnitario(prod.precoVenda || "");
-      if (variacoesComEstoque.length > 0) {
-        setVariacaoId(variacoesComEstoque[0].id);
+      if (gradesComEstoque.length > 0) {
+        setGradeId(gradesComEstoque[0].id);
       }
     }
   };
 
   const handleAdicionarItem = (e) => {
     e.preventDefault();
-    if (!produtoSelecionadoId || !variacaoId || quantidade <= 0 || !precoUnitario) {
+    if (!produtoSelecionadoId || !gradeId || quantidade <= 0 || !precoUnitario) {
       alert("Preencha todos os campos do produto corretamente.");
       return;
     }
 
     const produtoObj = produtos.find((p) => String(p.id) === String(produtoSelecionadoId));
-    const variacaoObj = variacoesDisponiveis.find((v) => String(v.id) === String(variacaoId));
+    const gradeObj = gradesDisponiveis.find((g) => String(g.id) === String(gradeId));
 
-    const itemExistente = itens.find((i) => String(i.variacaoId) === String(variacaoId));
+    const itemExistente = itens.find((i) => String(i.gradeId) === String(gradeId));
     if (itemExistente) {
       alert("Item já adicionado a esta compra.");
       return;
@@ -99,10 +101,10 @@ export default function NovaCompra() {
       setItens([
         ...itens,
         {
-          variacaoId: Number(variacaoId),
+          gradeId: Number(gradeId),
           nomeProduto: produtoObj?.nome,
-          cor: variacaoObj?.cor,
-          tamanho: variacaoObj?.tamanho,
+          cor: gradeObj?.cor,
+          tamanho: gradeObj?.tamanho,
           quantidade: Number(quantidade),
           precoUnitario: Number(precoUnitario),
           subtotal: Number(quantidade) * Number(precoUnitario),
@@ -116,7 +118,7 @@ export default function NovaCompra() {
   const handleLimparSelecaoItem = () =>{
     setProdutoSelecionadoId("");
     setVariacoesDisponiveis([]);
-    setVariacaoId("");
+    setGradeId("");
     setQuantidade("");
     setPrecoUnitario("");
   }
@@ -148,7 +150,7 @@ export default function NovaCompra() {
       numParcelas: formaPagamento === "CREDIARIO" ? Number(numParcelas) : 1,
       origem: "backoffice",
       itens: itens.map((i) => ({
-        variacaoId: i.variacaoId,
+        gradeId: i.gradeId,
         quantidade: i.quantidade,
         precoUnitario: i.precoUnitario,
       })),
@@ -241,11 +243,11 @@ export default function NovaCompra() {
                   <select
                     className="cm-input"
                     style={{ marginBottom: 0 }}
-                    value={variacaoId}
-                    onChange={(e) => setVariacaoId(e.target.value)}
-                    disabled={variacoesDisponiveis.length === 0}
+                    value={gradeId}
+                    onChange={(e) => setGradeId(e.target.value)}
+                    disabled={gradesDisponiveis.length === 0}
                   >
-                    {variacoesDisponiveis.map((v) => (
+                    {gradesDisponiveis.map((v) => (
                       <option key={v.id} value={v.id}>
                         {v.cor} / {v.tamanho}
                       </option>

@@ -575,7 +575,7 @@ function HistoricoCompras({ compras }) {
               <thead><tr><th scope="col">Produto / variação</th><th scope="col">Quantidade</th><th scope="col">Preço unitário</th></tr></thead>
               <tbody>{compra.itens.map((item) => (
                 <tr key={item.id}>
-                  <td>{item.variacao.produto.nome}<div className="cm-text-muted">{[item.variacao.cor, item.variacao.tamanho].filter(Boolean).join(" / ")}</div></td>
+                  <td>{item.grade.variacao.produto.nome}<div className="cm-text-muted">{[item.grade.variacao.cor, item.grade.tamanho].filter(Boolean).join(" / ")}</div></td>
                   <td>{item.quantidade}</td><td>{moeda(item.precoUnitario)}</td>
                 </tr>
               ))}</tbody>

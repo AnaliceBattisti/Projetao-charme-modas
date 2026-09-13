@@ -3,8 +3,8 @@ import { api } from "../api.js";
 import { IconPlus } from "../icons.jsx";
 import { situacao } from "../estoqueUtils.js";
 
-const emptyEntradaForm = { variacaoId: "", quantidade: "", motivo: "" };
-const emptyAjusteForm = { variacaoId: "", quantidade: "", motivo: "" };
+const emptyEntradaForm = { gradeId: "", quantidade: "", motivo: "" };
+const emptyAjusteForm = { gradeId: "", quantidade: "", motivo: "" };
 
 const TIPO_BADGE = {
   ENTRADA: "cm-badge-green",
@@ -13,7 +13,7 @@ const TIPO_BADGE = {
 };
 
 export default function Estoque() {
-  const [variacoes, setVariacoes] = useState([]);
+  const [grades, setGrades] = useState([]);
   const [movimentacoes, setMovimentacoes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -25,7 +25,7 @@ export default function Estoque() {
     setLoading(true);
     Promise.all([api.get("/estoque"), api.get("/estoque/movimentacoes")])
       .then(([v, m]) => {
-        setVariacoes(v);
+        setGrades(v);
         setMovimentacoes(m);
       })
       .catch((err) => setError(err.message))
@@ -39,7 +39,7 @@ export default function Estoque() {
     setError(null);
     try {
       await api.post("/estoque/movimentacoes", {
-        variacaoId: Number(entradaForm.variacaoId),
+        gradeId: Number(entradaForm.gradeId),
         tipo: "ENTRADA",
         quantidade: Number(entradaForm.quantidade),
         motivo: entradaForm.motivo,
@@ -57,7 +57,7 @@ export default function Estoque() {
     setError(null);
     try {
       await api.post("/estoque/movimentacoes", {
-        variacaoId: Number(ajusteForm.variacaoId),
+        gradeId: Number(ajusteForm.gradeId),
         tipo: "AJUSTE",
         quantidade: Number(ajusteForm.quantidade),
         motivo: ajusteForm.motivo,
@@ -70,20 +70,21 @@ export default function Estoque() {
     }
   }
 
-  function variacaoLabel(v) {
-    return `${v.produto.nome} — ${v.cor || "—"} / ${v.tamanho || "—"} (${v.sku})`;
+  function gradeLabel(g) {
+    const sku = g.sku ? ` (${g.sku})` : "";
+    return `${g.variacao.produto.nome} — ${g.variacao.cor} / ${g.tamanho}${sku}`;
   }
 
-  function previewEstoque(variacaoId, quantidade) {
-    const variacao = variacoes.find((v) => v.id === Number(variacaoId));
-    if (!variacao || quantidade === "" || Number.isNaN(Number(quantidade))) return null;
-    const atualizado = variacao.estoqueAtual + Number(quantidade);
-    return `Estoque atual: ${variacao.estoqueAtual} un → Estoque atualizado: ${atualizado} un`;
+  function previewEstoque(gradeId, quantidade) {
+    const grade = grades.find((g) => g.id === Number(gradeId));
+    if (!grade || quantidade === "" || Number.isNaN(Number(quantidade))) return null;
+    const atualizado = grade.estoqueAtual + Number(quantidade);
+    return `Estoque atual: ${grade.estoqueAtual} un → Estoque atualizado: ${atualizado} un`;
   }
 
-  const itensEmEstoque = variacoes.reduce((sum, v) => sum + v.estoqueAtual, 0);
-  const totalSkus = variacoes.filter((v) => v.sku).length;
-  const totalAlertas = variacoes.filter((v) => situacao(v).label !== "Adequado").length;
+  const itensEmEstoque = grades.reduce((sum, g) => sum + g.estoqueAtual, 0);
+  const totalSkus = grades.filter((g) => g.sku).length;
+  const totalAlertas = grades.filter((g) => situacao(g).label !== "Adequado").length;
   const inicioMes = new Date();
   inicioMes.setDate(1);
   inicioMes.setHours(0, 0, 0, 0);
@@ -95,7 +96,7 @@ export default function Estoque() {
         <div>
           <h1 className="cm-page-title">Estoque</h1>
           <p className="cm-page-subtitle">
-            Controle de variações, alertas de estoque mínimo e movimentações.
+            Controle por cor e tamanho, alertas de estoque mínimo e movimentações.
           </p>
         </div>
         <div className="cm-page-actions">
@@ -142,14 +143,14 @@ export default function Estoque() {
           <form className="cm-inline-form" onSubmit={handleRegistrarEntrada}>
             <select
               className="cm-input"
-              value={entradaForm.variacaoId}
-              onChange={(e) => setEntradaForm({ ...entradaForm, variacaoId: e.target.value })}
+              value={entradaForm.gradeId}
+              onChange={(e) => setEntradaForm({ ...entradaForm, gradeId: e.target.value })}
               required
             >
-              <option value="">Variação...</option>
-              {variacoes.map((v) => (
+              <option value="">Cor / tamanho...</option>
+              {grades.map((v) => (
                 <option key={v.id} value={v.id}>
-                  {variacaoLabel(v)}
+                  {gradeLabel(v)}
                 </option>
               ))}
             </select>
@@ -162,9 +163,9 @@ export default function Estoque() {
               onChange={(e) => setEntradaForm({ ...entradaForm, quantidade: e.target.value })}
               required
             />
-            {previewEstoque(entradaForm.variacaoId, entradaForm.quantidade) && (
+            {previewEstoque(entradaForm.gradeId, entradaForm.quantidade) && (
               <p className="cm-text-muted" style={{ width: "100%", margin: 0 }}>
-                {previewEstoque(entradaForm.variacaoId, entradaForm.quantidade)}
+                {previewEstoque(entradaForm.gradeId, entradaForm.quantidade)}
               </p>
             )}
             <input
@@ -189,14 +190,14 @@ export default function Estoque() {
           <form className="cm-inline-form" onSubmit={handleAjuste}>
             <select
               className="cm-input"
-              value={ajusteForm.variacaoId}
-              onChange={(e) => setAjusteForm({ ...ajusteForm, variacaoId: e.target.value })}
+              value={ajusteForm.gradeId}
+              onChange={(e) => setAjusteForm({ ...ajusteForm, gradeId: e.target.value })}
               required
             >
-              <option value="">Variação...</option>
-              {variacoes.map((v) => (
+              <option value="">Cor / tamanho...</option>
+              {grades.map((v) => (
                 <option key={v.id} value={v.id}>
-                  {variacaoLabel(v)}
+                  {gradeLabel(v)}
                 </option>
               ))}
             </select>
@@ -208,9 +209,9 @@ export default function Estoque() {
               onChange={(e) => setAjusteForm({ ...ajusteForm, quantidade: e.target.value })}
               required
             />
-            {previewEstoque(ajusteForm.variacaoId, ajusteForm.quantidade) && (
+            {previewEstoque(ajusteForm.gradeId, ajusteForm.quantidade) && (
               <p className="cm-text-muted" style={{ width: "100%", margin: 0 }}>
-                {previewEstoque(ajusteForm.variacaoId, ajusteForm.quantidade)}
+                {previewEstoque(ajusteForm.gradeId, ajusteForm.quantidade)}
               </p>
             )}
             <input
@@ -229,7 +230,7 @@ export default function Estoque() {
       <div className="cm-card" style={{ marginBottom: 20 }}>
         {loading ? (
           <p>Carregando...</p>
-        ) : variacoes.length === 0 ? (
+        ) : grades.length === 0 ? (
           <p>Nenhuma variação cadastrada ainda.</p>
         ) : (
           <table className="cm-table">
@@ -244,15 +245,15 @@ export default function Estoque() {
               </tr>
             </thead>
             <tbody>
-              {variacoes.map((v) => {
+              {grades.map((v) => {
                 const s = situacao(v);
                 return (
                   <tr key={v.id}>
                     <td>{v.produto.nome}</td>
                     <td>
-                      {v.cor || "—"} · {v.tamanho || "—"}
+                      {v.variacao.cor} · {v.tamanho}
                     </td>
-                    <td>{v.sku}</td>
+                    <td>{v.sku || "—"}</td>
                     <td>{v.estoqueMinimo}</td>
                     <td>
                       <strong>{v.estoqueAtual}</strong>
@@ -288,7 +289,7 @@ export default function Estoque() {
                 <tr key={m.id}>
                   <td>{new Date(m.data).toLocaleDateString("pt-BR")}</td>
                   <td>
-                    {m.variacao.produto.nome} · {m.variacao.cor || "—"}/{m.variacao.tamanho || "—"}
+                    {m.grade.variacao.produto.nome} · {m.grade.variacao.cor}/{m.grade.tamanho}
                   </td>
                   <td>
                     <span className={"cm-badge " + (TIPO_BADGE[m.tipo] || "cm-badge-gray")}>
