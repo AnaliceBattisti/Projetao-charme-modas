@@ -22,6 +22,8 @@ services:
       - "3333:3333"
     environment:
       - DATABASE_URL=${DATABASE_URL}
+      - LOJA_ORIGENS=https://projetao-grupo01.ufape.edu.br
+      - LOJA_URL=https://projetao-grupo01.ufape.edu.br
     depends_on:
       - postgres
     networks:
