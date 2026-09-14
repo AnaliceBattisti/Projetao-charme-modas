@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, BASE_URL } from "../api.js";
-import { IconPlus, IconSearch, IconChevronRight, IconTrash } from "../icons.jsx";
+import { IconPlus, IconSearch, IconChevronRight, IconTrash, IconImage } from "../icons.jsx";
 import Modal from "../components/Modal.jsx";
 import { formatCurrencyInput, parseCurrencyInput } from "../format.js";
 
@@ -15,7 +15,9 @@ const emptyForm = {
   precoVenda: "",
 };
 
-const emptyVariacao = { cor: "", tamanho: "", sku: "" };
+const emptyCorForm = { cor: "" };
+// Quantidade não se cadastra aqui: entra pela aba Estoque.
+const emptyGradeForm = { tamanho: "", sku: "" };
 
 const CATEGORIAS = ["Feminino", "Masculino", "Infantil", "Acessórios"];
 
@@ -31,6 +33,7 @@ export default function Produtos() {
   const [fornecedores, setFornecedores] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [variacaoForms, setVariacaoForms] = useState({});
+  const [gradeForms, setGradeForms] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -87,20 +90,56 @@ export default function Produtos() {
   function updateVariacaoForm(produtoId, field, value) {
     setVariacaoForms((prev) => ({
       ...prev,
-      [produtoId]: { ...(prev[produtoId] || emptyVariacao), [field]: value },
+      [produtoId]: { ...(prev[produtoId] || emptyCorForm), [field]: value },
     }));
   }
 
+  function updateGradeForm(variacaoId, field, value) {
+    setGradeForms((prev) => ({
+      ...prev,
+      [variacaoId]: { ...(prev[variacaoId] || emptyGradeForm), [field]: value },
+    }));
+  }
+
+  // Cada variação é uma COR; a foto e os tamanhos penduram nela.
   async function handleAddVariacao(produtoId) {
-    const variacao = variacaoForms[produtoId] || emptyVariacao;
+    const variacao = variacaoForms[produtoId] || emptyCorForm;
     setError(null);
-    if (!variacao.cor.trim() || !variacao.tamanho.trim()) {
-      setError("Preencha cor e tamanho antes de adicionar a variação.");
+    if (!variacao.cor.trim()) {
+      setError("Informe a cor antes de adicionar.");
       return;
     }
     try {
-      await api.post(`/produtos/${produtoId}/variacoes`, variacao);
-      setVariacaoForms((prev) => ({ ...prev, [produtoId]: emptyVariacao }));
+      await api.post(`/produtos/${produtoId}/variacoes`, { cor: variacao.cor });
+      setVariacaoForms((prev) => ({ ...prev, [produtoId]: emptyCorForm }));
+      loadProdutos();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  // Cada grade é um TAMANHO daquela cor: é onde o estoque vive.
+  async function handleAddGrade(produtoId, variacaoId) {
+    const grade = gradeForms[variacaoId] || emptyGradeForm;
+    setError(null);
+    if (!grade.tamanho.trim()) {
+      setError("Informe o tamanho antes de adicionar.");
+      return;
+    }
+    try {
+      await api.post(`/produtos/${produtoId}/variacoes/${variacaoId}/grades`, grade);
+      setGradeForms((prev) => ({ ...prev, [variacaoId]: emptyGradeForm }));
+      loadProdutos();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleDeleteGrade(produtoId, variacaoId, gradeId) {
+    if (!confirm("Remover este tamanho?")) return;
+    setError(null);
+    try {
+      await api.del(`/produtos/${produtoId}/variacoes/${variacaoId}/grades/${gradeId}`);
       loadProdutos();
     } catch (err) {
       setError(err.message);
@@ -121,7 +160,7 @@ export default function Produtos() {
   }
 
   async function handleDeleteVariacao(produtoId, variacaoId) {
-    if (!confirm("Remover esta variação?")) return;
+    if (!confirm("Remover esta cor e todos os seus tamanhos?")) return;
     setError(null);
     try {
       await api.del(`/produtos/${produtoId}/variacoes/${variacaoId}`);
@@ -148,7 +187,10 @@ export default function Produtos() {
       <div className="cm-page-header">
         <div>
           <h1 className="cm-page-title">Produtos</h1>
-          <p className="cm-page-subtitle">Catálogo de peças por categoria, com variações e estoque.</p>
+          <p className="cm-page-subtitle">
+            Cadastro do catálogo: cada produto tem cores (com foto) e os tamanhos de cada cor.
+            As quantidades ficam em <Link to="/estoque">Estoque</Link>.
+          </p>
         </div>
         <div className="cm-page-actions">
           <div className="cm-search">
@@ -275,17 +317,13 @@ export default function Produtos() {
                 <th>Categoria</th>
                 <th>Fornecedor</th>
                 <th>Venda</th>
-                <th>Estoque</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               {produtosFiltrados.map((produto) => {
-                const estoqueTotal = produto.variacoes.reduce(
-                  (sum, v) => sum + v.estoqueAtual,
-                  0
-                );
                 const capa = produto.variacoes.find((v) => v.imagemUrl)?.imagemUrl;
+                const totalTamanhos = produto.variacoes.reduce((s, v) => s + v.grades.length, 0);
                 const isExpanded = expandedId === produto.id;
                 return (
                   <Fragment key={produto.id}>
@@ -298,13 +336,17 @@ export default function Produtos() {
                           {capa ? (
                             <img className="cm-thumb" src={`${BASE_URL}${capa}`} alt={produto.nome} />
                           ) : (
-                            <div className="cm-thumb cm-thumb-placeholder" />
+                            <div className="cm-thumb cm-thumb-placeholder" title="Sem foto">
+                              <IconImage width={16} height={16} />
+                            </div>
                           )}
                           <div>
                             <strong>{produto.nome}</strong>
                             <br />
                             <span className="cm-text-muted">
-                              {produto.marca || "sem marca"} · {produto.variacoes.length} variações
+                              {produto.marca || "sem marca"} ·{" "}
+                              {produto.variacoes.length} {produto.variacoes.length === 1 ? "cor" : "cores"} ·{" "}
+                              {totalTamanhos} {totalTamanhos === 1 ? "tamanho" : "tamanhos"}
                             </span>
                           </div>
                         </div>
@@ -320,9 +362,6 @@ export default function Produtos() {
                       </td>
                       <td>{produto.fornecedor?.nomeRazaoSocial}</td>
                       <td>R$ {Number(produto.precoVenda).toFixed(2)}</td>
-                      <td className={estoqueTotal <= 5 ? "cm-badge-red" : ""}>
-                        <strong>{estoqueTotal}</strong>
-                      </td>
                       <td>
                         <IconChevronRight
                           style={{ transform: isExpanded ? "rotate(90deg)" : "none" }}
@@ -331,99 +370,144 @@ export default function Produtos() {
                     </tr>
                     {isExpanded && (
                       <tr key={produto.id + "-details"}>
-                        <td colSpan={6} style={{ background: "var(--cm-surface-alt)" }}>
-                          <table className="cm-table" style={{ marginBottom: 12 }}>
-                            <thead>
-                              <tr>
-                                <th>Foto</th>
-                                <th>Cor</th>
-                                <th>Tamanho</th>
-                                <th>SKU</th>
-                                <th>Estoque</th>
-                                <th></th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {produto.variacoes.length === 0 ? (
-                                <tr>
-                                  <td colSpan={6}>Nenhuma variação ainda.</td>
-                                </tr>
-                              ) : (
-                                produto.variacoes.map((v) => (
-                                  <tr key={v.id}>
-                                    <td onClick={(e) => e.stopPropagation()}>
-                                      <div className="cm-image-upload">
-                                        {v.imagemUrl ? (
-                                          <img
-                                            src={`${BASE_URL}${v.imagemUrl}`}
-                                            alt=""
-                                            className="cm-image-preview"
-                                          />
-                                        ) : (
-                                          <div className="cm-image-preview cm-image-preview-empty" />
-                                        )}
-                                        <label className="cm-file-button">
-                                          {v.imagemUrl ? "Trocar" : "Adicionar"}
-                                          <input
-                                            className="cm-file-input-hidden"
-                                            type="file"
-                                            accept="image/*"
-                                            onChange={(e) =>
-                                              handleVariacaoImagemChange(
-                                                produto.id,
-                                                v.id,
-                                                e.target.files[0]
-                                              )
-                                            }
-                                          />
-                                        </label>
+                        <td colSpan={5} style={{ background: "var(--cm-surface-alt)" }}>
+                          {produto.variacoes.length === 0 ? (
+                            <p className="cm-text-muted">
+                              Nenhuma cor cadastrada ainda. Comece adicionando uma cor abaixo — é nela
+                              que entra a foto da peça.
+                            </p>
+                          ) : (
+                            produto.variacoes.map((v) => (
+                              <div key={v.id} className="cm-cor-bloco" onClick={(e) => e.stopPropagation()}>
+                                <div className="cm-cor-cabecalho">
+                                  <div className="cm-image-upload">
+                                    {/* O próprio quadrado é o botão de foto: clicar abre o seletor. */}
+                                    <label
+                                      className={
+                                        "cm-foto-alvo" + (v.imagemUrl ? " tem-foto" : "")
+                                      }
+                                      title={v.imagemUrl ? "Trocar a foto desta cor" : "Escolher a foto desta cor"}
+                                    >
+                                      {v.imagemUrl ? (
+                                        <>
+                                          <img src={`${BASE_URL}${v.imagemUrl}`} alt={v.cor} />
+                                          <span className="cm-foto-overlay">Trocar</span>
+                                        </>
+                                      ) : (
+                                        <span className="cm-foto-vazia">
+                                          <IconImage width={20} height={20} />
+                                          Adicionar foto
+                                        </span>
+                                      )}
+                                      <input
+                                        className="cm-file-input-hidden"
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) =>
+                                          handleVariacaoImagemChange(produto.id, v.id, e.target.files[0])
+                                        }
+                                      />
+                                    </label>
+                                    <div>
+                                      <strong>{v.cor}</strong>
+                                      <div className="cm-text-muted">
+                                        {v.grades.length === 0
+                                          ? "sem tamanhos"
+                                          : v.grades.map((g) => g.tamanho).join(", ")}
                                       </div>
-                                    </td>
-                                    <td>{v.cor || "—"}</td>
-                                    <td>{v.tamanho || "—"}</td>
-                                    <td>{v.sku || "—"}</td>
-                                    <td>{v.estoqueAtual}</td>
-                                    <td>
-                                      <button
-                                        className="cm-link-button"
-                                        type="button"
-                                        onClick={() => handleDeleteVariacao(produto.id, v.id)}
-                                      >
-                                        <IconTrash width={14} height={14} />
-                                      </button>
-                                    </td>
-                                  </tr>
-                                ))
-                              )}
-                            </tbody>
-                          </table>
+                                    </div>
+                                  </div>
+                                  <div className="cm-acoes-cor">
+                                    <button
+                                      className="cm-link-button"
+                                      type="button"
+                                      onClick={() => handleDeleteVariacao(produto.id, v.id)}
+                                    >
+                                      <IconTrash width={14} height={14} />
+                                      Remover cor
+                                    </button>
+                                  </div>
+                                </div>
 
-                          <div className="cm-inline-form" onClick={(e) => e.stopPropagation()}>
-                            <input
-                              className="cm-input"
-                              placeholder="Cor"
-                              value={variacaoForms[produto.id]?.cor || ""}
-                              onChange={(e) => updateVariacaoForm(produto.id, "cor", e.target.value)}
-                            />
-                            <input
-                              className="cm-input"
-                              placeholder="Tamanho"
-                              value={variacaoForms[produto.id]?.tamanho || ""}
-                              onChange={(e) => updateVariacaoForm(produto.id, "tamanho", e.target.value)}
-                            />
-                            <input
-                              className="cm-input"
-                              placeholder="SKU (opcional)"
-                              value={variacaoForms[produto.id]?.sku || ""}
-                              onChange={(e) => updateVariacaoForm(produto.id, "sku", e.target.value)}
-                            />
-                            <button
-                              className="cm-button-outline"
-                              type="button"
-                              onClick={() => handleAddVariacao(produto.id)}
-                            >
-                              Adicionar variação
-                            </button>
+                                {v.grades.length > 0 && (
+                                  <table className="cm-table cm-tabela-tamanhos">
+                                    <thead>
+                                      <tr>
+                                        <th>Tamanho</th>
+                                        <th>SKU</th>
+                                        <th></th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {v.grades.map((g) => (
+                                        <tr key={g.id}>
+                                          <td>{g.tamanho}</td>
+                                          <td>{g.sku || "—"}</td>
+                                          <td>
+                                            {/* Tamanho com peça em estoque não sai daqui: zera na aba Estoque. */}
+                                            <button
+                                              className="cm-link-button"
+                                              type="button"
+                                              disabled={g.estoqueAtual > 0}
+                                              title={
+                                                g.estoqueAtual > 0
+                                                  ? `Tem ${g.estoqueAtual} peça(s) em estoque — zere em Estoque antes de remover`
+                                                  : "Remover tamanho"
+                                              }
+                                              onClick={() => handleDeleteGrade(produto.id, v.id, g.id)}
+                                            >
+                                              <IconTrash width={14} height={14} />
+                                            </button>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                )}
+
+                                <div className="cm-inline-form">
+                                  <input
+                                    className="cm-input"
+                                    placeholder="Tamanho (P, M, 40...)"
+                                    value={gradeForms[v.id]?.tamanho || ""}
+                                    onChange={(e) => updateGradeForm(v.id, "tamanho", e.target.value)}
+                                  />
+                                  <input
+                                    className="cm-input"
+                                    placeholder="SKU (opcional)"
+                                    value={gradeForms[v.id]?.sku || ""}
+                                    onChange={(e) => updateGradeForm(v.id, "sku", e.target.value)}
+                                  />
+                                  <button
+                                    className="cm-button-outline"
+                                    type="button"
+                                    onClick={() => handleAddGrade(produto.id, v.id)}
+                                  >
+                                    <IconPlus width={14} height={14} />
+                                    Adicionar tamanho
+                                  </button>
+                                </div>
+                              </div>
+                            ))
+                          )}
+
+                          <div className="cm-rodape-produto" onClick={(e) => e.stopPropagation()}>
+                            <div className="cm-inline-form">
+                              <input
+                                className="cm-input"
+                                placeholder="Nova cor (ex.: Rosa)"
+                                value={variacaoForms[produto.id]?.cor || ""}
+                                onChange={(e) => updateVariacaoForm(produto.id, "cor", e.target.value)}
+                              />
+                              <button
+                                className="cm-button-pill"
+                                type="button"
+                                onClick={() => handleAddVariacao(produto.id)}
+                              >
+                                <IconPlus width={14} height={14} />
+                                Adicionar cor
+                              </button>
+                            </div>
                             <button
                               className="cm-link-button"
                               type="button"

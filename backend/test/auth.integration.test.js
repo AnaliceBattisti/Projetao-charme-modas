@@ -292,10 +292,17 @@ test("login usa cookie HttpOnly, restaura sessão, isola contas e revoga no logo
 test("não autentica senha errada nem conta interna e expira e renova sessões", async () => {
   const dados = novoCadastro();
   const conta = await cadastrar(dados);
-  assert.equal(
-    (await login({ ...dados, senha: "Senha incorreta" })).status,
-    401,
-  );
+  for (const senha of ["Senha incorreta", "1", "1234567", "x".repeat(129)]) {
+    const resposta = await login({ ...dados, senha });
+    assert.equal(resposta.status, 401);
+    assert.deepEqual(resposta.data, { error: "E-mail ou senha inválidos." });
+    assert.equal(resposta.cookie, undefined);
+  }
+  for (const senha of ["", "   "]) {
+    const resposta = await login({ ...dados, senha });
+    assert.equal(resposta.status, 400);
+    assert.deepEqual(resposta.data, { error: "Senha é obrigatória." });
+  }
   assert.equal((await login(novoCadastro())).status, 401);
   const primeira = await login(dados);
   const segunda = await login(dados, primeira.cookie);

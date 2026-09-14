@@ -48,8 +48,9 @@ export default function Login() {
       );
       formulario.reset();
       setUsuario(data.usuario);
-      if (location.state?.voltarPara === "/minha-conta/editar") {
-        navigate("/minha-conta/editar", { replace: true });
+      if (["/minha-conta/editar", "/checkout", "/meus-pedidos"].includes(location.state?.voltarPara) ||
+        /^\/meus-pedidos\/[1-9]\d*$/.test(location.state?.voltarPara)) {
+        navigate(location.state.voltarPara, { replace: true });
       }
     } catch (error) {
       setErro(true);
@@ -101,6 +102,9 @@ export default function Login() {
           </div>
         </dl>
         <div className="conta-botoes">
+          <Link className="cm-botao cm-botao-claro" to="/meus-pedidos">
+            Meus pedidos
+          </Link>
           <Link className="cm-botao" to="/minha-conta/editar">
             Editar meus dados
           </Link>
@@ -167,8 +171,6 @@ export default function Login() {
               placeholder="••••••••"
               autoComplete="current-password"
               required
-              minLength={8}
-              maxLength={128}
             />
             <Link
               to="/esqueci-senha"

@@ -6,7 +6,7 @@ async function main() {
   console.log('🌱 Iniciando limpeza e povoamento do banco de dados...');
 
   // 1. Limpeza em ordem reversa de dependência (desabilita FKs no Postgres para segurança)
-  await prisma.$executeRawUnsafe(`TRUNCATE TABLE "Parcela", "ItemCompra", "Compra", "Crediario", "EnderecoCliente", "Cliente", "MovimentacaoEstoque", "Variacao", "Produto", "Fornecedor", "Usuario" RESTART IDENTITY CASCADE;`);
+  await prisma.$executeRawUnsafe(`TRUNCATE TABLE "Parcela", "ItemCompra", "Compra", "Crediario", "EnderecoCliente", "Cliente", "MovimentacaoEstoque", "Grade", "Variacao", "Produto", "Fornecedor", "Usuario" RESTART IDENTITY CASCADE;`);
 
   // 2. Criar Usuário Admin
   await prisma.usuario.create({
@@ -35,13 +35,22 @@ async function main() {
       precoVenda: 100.0,
       variacoes: {
         create: [
-          { cor: 'Azul', tamanho: '40', sku: 'CALCA-AZUL-40', estoqueAtual: 50 },
+          {
+            cor: 'Azul',
+            grades: {
+              create: [
+                { tamanho: '38', sku: 'CALCA-AZUL-38', estoqueAtual: 20 },
+                { tamanho: '40', sku: 'CALCA-AZUL-40', estoqueAtual: 50 },
+              ],
+            },
+          },
         ],
       },
     },
   });
 
   const variacao = await prisma.variacao.findFirstOrThrow({ where: { produtoId: produto.id } });
+  const grade = await prisma.grade.findFirstOrThrow({ where: { gradeId: grade.id, tamanho: '40' } });
 
   // Datas de referência dinâmicas (com base em hoje)
   const hoje = new Date();
@@ -77,7 +86,7 @@ async function main() {
       formaPagamento: 'CREDIARIO',
       status: StatusCompra.CONCLUIDA,
       itens: {
-        create: [{ variacaoId: variacao.id, quantidade: 1, precoUnitario: 100.0 }],
+        create: [{ gradeId: grade.id, quantidade: 1, precoUnitario: 100.0 }],
       },
       parcelas: {
         create: [
@@ -110,7 +119,7 @@ async function main() {
       formaPagamento: 'CREDIARIO',
       status: StatusCompra.CONCLUIDA,
       itens: {
-        create: [{ variacaoId: variacao.id, quantidade: 2, precoUnitario: 100.0 }],
+        create: [{ gradeId: grade.id, quantidade: 2, precoUnitario: 100.0 }],
       },
       parcelas: {
         create: [
@@ -144,7 +153,7 @@ async function main() {
       formaPagamento: 'CREDIARIO',
       status: StatusCompra.CONCLUIDA,
       itens: {
-        create: [{ variacaoId: variacao.id, quantidade: 1, precoUnitario: 150.0 }],
+        create: [{ gradeId: grade.id, quantidade: 1, precoUnitario: 150.0 }],
       },
       parcelas: {
         create: [
@@ -161,7 +170,7 @@ async function main() {
       formaPagamento: 'CREDIARIO',
       status: StatusCompra.CONCLUIDA,
       itens: {
-        create: [{ variacaoId: variacao.id, quantidade: 1, precoUnitario: 150.0 }],
+        create: [{ gradeId: grade.id, quantidade: 1, precoUnitario: 150.0 }],
       },
       parcelas: {
         create: [
@@ -193,7 +202,7 @@ async function main() {
       formaPagamento: 'CREDIARIO',
       status: StatusCompra.CONCLUIDA,
       itens: {
-        create: [{ variacaoId: variacao.id, quantidade: 1, precoUnitario: 100.0 }],
+        create: [{ gradeId: grade.id, quantidade: 1, precoUnitario: 100.0 }],
       },
       parcelas: {
         create: [

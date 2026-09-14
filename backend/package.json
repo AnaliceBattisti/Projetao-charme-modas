@@ -7,7 +7,7 @@
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "test": "node --test test/clientes.validation.test.js test/auth.validation.test.js",
-    "test:integration": "node --test test/clientes.integration.test.js test/auth.integration.test.js test/recuperacaoSenha.integration.test.js",
+    "test:integration": "node --test test/clientes.integration.test.js test/auth.integration.test.js test/recuperacaoSenha.integration.test.js test/pedidos.integration.test.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio"

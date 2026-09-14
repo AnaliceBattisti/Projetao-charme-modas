@@ -82,29 +82,43 @@ model Produto {
   variacoes     Variacao[]
 }
 
+// Uma variação por COR do produto. A foto vive aqui porque é a cor que muda
+// a aparência da peça; o tamanho não. Os tamanhos ficam nas grades abaixo.
 model Variacao {
   id             Int    @id @default(autoincrement())
   produtoId      Int
-  cor            String?
-  tamanho        String?
-  sku            String? @unique
-  // Não estava no diagrama original — necessário pro alerta de estoque
-  // baixo/esgotado e pra guardar a quantidade atual sem recalcular
-  // a partir do histórico de movimentações a cada consulta.
-  estoqueMinimo  Int    @default(0)
-  estoqueAtual   Int    @default(0)
-  // Foto por variação (não por produto) — a cor muda a aparência da peça,
-  // o tamanho não, então faz mais sentido a foto acompanhar cor+tamanho aqui.
+  cor            String
   imagemUrl      String?
 
   produto              Produto @relation(fields: [produtoId], references: [id])
+  grades               Grade[]
+
+  @@unique([produtoId, cor])
+}
+
+// Um tamanho dentro de uma cor. É a unidade de estoque: é o que se vende,
+// o que sofre movimentação e o que o item de compra referencia.
+model Grade {
+  id             Int    @id @default(autoincrement())
+  variacaoId     Int
+  tamanho        String
+  sku            String? @unique
+  // Necessário pro alerta de estoque baixo/esgotado e pra guardar a quantidade
+  // atual sem recalcular a partir do histórico de movimentações a cada consulta.
+  estoqueMinimo  Int    @default(0)
+  estoqueAtual   Int    @default(0)
+
+  variacao             Variacao @relation(fields: [variacaoId], references: [id], onDelete: Cascade)
   movimentacoesEstoque MovimentacaoEstoque[]
   itensCompra          ItemCompra[]
+
+  @@unique([variacaoId, tamanho])
+  @@index([variacaoId])
 }
 
 model MovimentacaoEstoque {
   id         Int                     @id @default(autoincrement())
-  variacaoId Int
+  gradeId    Int
   tipo       TipoMovimentacaoEstoque
   quantidade Int
   // Não estava no diagrama original — usado pra descrever a movimentação
@@ -112,7 +126,9 @@ model MovimentacaoEstoque {
   motivo     String?
   data       DateTime                @default(now())
 
-  variacao   Variacao @relation(fields: [variacaoId], references: [id])
+  grade      Grade @relation(fields: [gradeId], references: [id])
+
+  @@index([gradeId])
 }
 
 enum TipoMovimentacaoEstoque {
@@ -180,6 +196,7 @@ model HistoricoLimiteCrediarioCliente {
 
 model Compra {
   id             Int           @id @default(autoincrement())
+  chavePedido    String?       @unique
   clienteId      Int
   data           DateTime      @default(now())
   valorTotal     Decimal       @db.Decimal(10, 2)
@@ -192,6 +209,7 @@ model Compra {
 }
 
 enum StatusCompra {
+  SOLICITADA
   PENDENTE
   CONCLUIDA
   CANCELADA
@@ -200,12 +218,14 @@ enum StatusCompra {
 model ItemCompra {
   id            Int     @id @default(autoincrement())
   compraId      Int
-  variacaoId    Int
+  gradeId       Int
   quantidade    Int
   precoUnitario Decimal @db.Decimal(10, 2)
 
-  compra        Compra   @relation(fields: [compraId], references: [id])
-  variacao      Variacao @relation(fields: [variacaoId], references: [id])
+  compra        Compra @relation(fields: [compraId], references: [id])
+  grade         Grade  @relation(fields: [gradeId], references: [id])
+
+  @@index([gradeId])
 }
 
 model Parcela {

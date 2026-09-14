@@ -8,7 +8,7 @@ const cadastro = { crediario: true, enderecos: { orderBy: { id: "asc" } } };
 const historico = {
   orderBy: [{ data: "desc" }, { id: "desc" }],
   include: {
-    itens: { include: { variacao: { include: { produto: true } } }, orderBy: { id: "asc" } },
+    itens: { include: { grade: { include: { variacao: { include: { produto: true } } } } }, orderBy: { id: "asc" } },
     parcelas: { orderBy: { numero: "asc" } },
   },
 };

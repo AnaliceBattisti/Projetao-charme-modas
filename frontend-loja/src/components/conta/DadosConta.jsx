@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import Campo from "../ui/Campo.jsx";
 import { atualizarConta } from "../../services/conta.js";
+import { formatCpf, formatTelefoneInput } from "../../format.js";
 
 const estadosCivis = [
   "Solteiro(a)",
@@ -19,9 +20,13 @@ const campos = [
   "estadoCivil",
 ];
 const dadosFormulario = (cliente) =>
-  Object.fromEntries(
-    campos.map((campo) => [campo, String(cliente[campo] ?? "")]),
-  );
+  ({
+    ...Object.fromEntries(
+      campos.map((campo) => [campo, String(cliente[campo] ?? "")]),
+    ),
+    cpf: formatCpf(cliente.cpf ?? ""),
+    telefone: formatTelefoneInput(cliente.telefone ?? ""),
+  });
 
 export default function DadosConta({ usuario, onAtualizar, onSessaoExpirada }) {
   const [form, setForm] = useState(() => dadosFormulario(usuario.cliente));
@@ -93,6 +98,7 @@ export default function DadosConta({ usuario, onAtualizar, onSessaoExpirada }) {
             <Campo
               label="CPF"
               {...input("cpf")}
+              mascara={formatCpf}
               inputMode="numeric"
               required
               maxLength={14}
@@ -102,6 +108,7 @@ export default function DadosConta({ usuario, onAtualizar, onSessaoExpirada }) {
             <Campo
               label="Telefone"
               {...input("telefone")}
+              mascara={formatTelefoneInput}
               type="tel"
               autoComplete="tel"
               maxLength={30}

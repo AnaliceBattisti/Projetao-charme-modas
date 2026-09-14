@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
+import { aprovarPedido } from "../services/pedidos.js";
+import { validateId, ValidationError } from "../validation/clientes.js";
 
 const router = Router();
 
@@ -30,13 +32,18 @@ router.get("/", async (req, res) => {
         parcelas: true,
         itens: {
           include:{
-            variacao:{
+            grade:{
               select:{
-                cor: true,
                 tamanho: true,
-                produto:{
+                variacao:{
                   select:{
-                    nome:true
+                    cor: true,
+                    imagemUrl: true,
+                    produto:{
+                      select:{
+                        nome:true
+                      }
+                    }
                   }
                 }
               }
@@ -59,7 +66,7 @@ router.get("/:id", async (req, res) => {
     where: { id: Number(req.params.id) },
     include: {
       cliente: true,
-      itens: { include: { variacao: { include: { produto: true } } } },
+      itens: { include: { grade: { include: { variacao: { include: { produto: true } } } } } },
       parcelas: true,
     },
   });
@@ -79,27 +86,30 @@ router.post("/", async (req, res) => {
       let valorTotalCalculado = 0;
 
       for (const item of itens) {
-        const variacaoId = Number(item.variacaoId);
+        const gradeId = Number(item.gradeId);
         const quantidade = Number(item.quantidade);
         const precoUnitario = Number(item.precoUnitario);
 
-        const variacao = await tx.variacao.findUnique({
-          where: { id: variacaoId }
+        // O estoque vive na grade (tamanho dentro da cor).
+        const grade = await tx.grade.findUnique({
+          where: { id: gradeId },
+          include: { variacao: { include: { produto: true } } }
         });
 
-        if (!variacao) {
-          throw new Error(`Variação de produto ID ${variacaoId} não encontrada.`);
+        if (!grade) {
+          throw new Error(`Tamanho de produto ID ${gradeId} não encontrado.`);
         }
 
-        if (variacao.estoqueAtual < quantidade) {
-          throw new Error(`Estoque insuficiente para o item ID ${variacaoId}. Atual: ${variacao.estoqueAtual}, Solicitado: ${quantidade}`);
+        if (grade.estoqueAtual < quantidade) {
+          const peca = `${grade.variacao.produto.nome} ${grade.variacao.cor}/${grade.tamanho}`;
+          throw new Error(`Estoque insuficiente para ${peca}. Atual: ${grade.estoqueAtual}, Solicitado: ${quantidade}`);
         }
 
         valorTotalCalculado += quantidade * precoUnitario;
 
         // Decrementa o estoque atual
-        await tx.variacao.update({
-          where: { id: variacaoId },
+        await tx.grade.update({
+          where: { id: gradeId },
           data: {
             estoqueAtual: {
               decrement: quantidade
@@ -110,7 +120,7 @@ router.post("/", async (req, res) => {
         // Registra a movimentação no histórico
         await tx.movimentacaoEstoque.create({
           data: {
-            variacaoId,
+            gradeId,
             tipo: "SAIDA",
             quantidade,
             motivo: `Venda no crediário`
@@ -127,7 +137,7 @@ router.post("/", async (req, res) => {
           status: origem === "backoffice" ? "CONCLUIDA" : "PENDENTE",
           itens: {
             create: itens.map((item) => ({
-              variacaoId: Number(item.variacaoId),
+              gradeId: Number(item.gradeId),
               quantidade: Number(item.quantidade),
               precoUnitario: item.precoUnitario,
             })),
@@ -233,9 +243,20 @@ function gerarParcelasSeguras(valorTotalFinanciado, quantidadeParcelas) {
   return parcelas;
 }
 
+router.put("/:id/aprovar", async (req, res) => {
+  try {
+    res.json(await aprovarPedido(validateId(req.params.id), req.body));
+  } catch (error) {
+    res.status(error instanceof ValidationError ? 400 : 500).json({
+      erro: error instanceof ValidationError ? error.message : "Não foi possível aprovar o pedido. Tente novamente.",
+    });
+  }
+});
+
 router.put("/:id/cancelar", async (req, res) => {
   try {
     const compraId = Number(req.params.id);
+    let apenasSolicitacao = false;
 
     const compraCancelada = await prisma.$transaction(async (tx) => {
       const compra = await tx.compra.findUnique({
@@ -254,9 +275,18 @@ router.put("/:id/cancelar", async (req, res) => {
         throw new Error("Esta compra já está cancelada.");
       }
 
+      if (compra.status === "SOLICITADA") {
+        apenasSolicitacao = true;
+        const cancelado = await tx.compra.updateMany({
+          where: { id: compraId, status: "SOLICITADA" }, data: { status: "CANCELADA" },
+        });
+        if (!cancelado.count) throw new Error("Este pedido já foi analisado pela loja.");
+        return tx.compra.findUnique({ where: { id: compraId }, include: { itens: true, parcelas: true } });
+      }
+
       for (const item of compra.itens) {
-        await tx.variacao.update({
-          where: { id: item.variacaoId },
+        await tx.grade.update({
+          where: { id: item.gradeId },
           data: {
             estoqueAtual: {
               increment: item.quantidade,
@@ -266,7 +296,7 @@ router.put("/:id/cancelar", async (req, res) => {
 
         await tx.movimentacaoEstoque.create({
           data: {
-            variacaoId: item.variacaoId,
+            gradeId: item.gradeId,
             tipo: "AJUSTE",
             quantidade: item.quantidade,
             motivo: `Estorno devido ao cancelamento da Compra #${compra.id}`,
@@ -314,7 +344,7 @@ router.put("/:id/cancelar", async (req, res) => {
     });
 
     return res.json({
-      mensagem: "Compra cancelada e estoque/limite estornados com sucesso.",
+      mensagem: apenasSolicitacao ? "Solicitação de pedido cancelada." : "Compra cancelada e estoque/limite estornados com sucesso.",
       compra: compraCancelada,
     });
   } catch (error) {

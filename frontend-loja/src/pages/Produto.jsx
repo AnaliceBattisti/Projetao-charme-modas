@@ -5,10 +5,16 @@ import { useLoja } from "../estado.jsx";
 import { formatarPreco, parcelaSemJuros } from "../format.js";
 import { useProdutos } from "../produtos.js";
 import { IconeCheck } from "../icons.jsx";
+import { corEhClara, corHex } from "../cores.js";
 
+// O máximo de parcelas que o admin consegue aprovar no crediário (aprovarPedido).
+const PARCELAS_CREDIARIO = 6;
+
+// Só promessa que a loja cumpre: não existe pagamento online, o pedido é enviado
+// para a loja aprovar e o pagamento é combinado com a equipe.
 const GARANTIAS = [
-  "Compra segura",
-  "Pix, cartão e boleto",
+  "Crediário próprio da loja",
+  "Pagamento combinado com a equipe",
   "Acompanhe o status do pedido",
   "Trocas conforme política da loja",
 ];
@@ -26,14 +32,20 @@ export default function Produto() {
 
   const produto = produtos.find((p) => String(p.id) === id);
 
-  const tamanhos = useMemo(
-    () => [...new Set((produto?.variacoes ?? []).map((v) => v.tamanho).filter(Boolean))],
-    [produto]
-  );
+  // A cor é a variação; os tamanhos são as grades dentro dela.
   const cores = useMemo(
-    () => [...new Set((produto?.variacoes ?? []).map((v) => v.cor).filter(Boolean))],
+    () => (produto?.variacoes ?? []).map((v) => v.cor).filter(Boolean),
     [produto]
   );
+  const variacaoSelecionada = useMemo(
+    () => (produto?.variacoes ?? []).find((v) => v.cor === cor) ?? null,
+    [produto, cor]
+  );
+  // Sem cor escolhida, mostramos todos os tamanhos que o produto tem.
+  const tamanhos = useMemo(() => {
+    const origem = variacaoSelecionada ? [variacaoSelecionada] : produto?.variacoes ?? [];
+    return [...new Set(origem.flatMap((v) => (v.grades ?? []).map((g) => g.tamanho)))];
+  }, [produto, variacaoSelecionada]);
   const fotos = useMemo(
     () => (produto?.variacoes ?? []).map((v) => v.imagemUrl).filter(Boolean),
     [produto]
@@ -54,42 +66,51 @@ export default function Produto() {
     );
   }
 
-  // A variação só é definida quando os eixos disponíveis foram escolhidos.
-  const variacao = produto.variacoes.find(
-    (v) => (!tamanhos.length || v.tamanho === tamanho) && (!cores.length || v.cor === cor)
-  );
+  // Escolher cor + tamanho resolve uma grade, que é o que se vende.
+  const grade =
+    variacaoSelecionada && tamanho
+      ? (variacaoSelecionada.grades ?? []).find((g) => g.tamanho === tamanho) ?? null
+      : null;
 
-  function disponivel(campo, valor) {
-    return produto.variacoes.some((v) => {
-      if (v[campo] !== valor) return false;
-      if (campo === "tamanho" && cor) return v.cor === cor;
-      if (campo === "cor" && tamanho) return v.tamanho === tamanho;
-      return true;
-    });
+  // Uma cor está disponível se tiver qualquer grade com estoque (respeitando o
+  // tamanho já escolhido); um tamanho está disponível dentro da cor escolhida.
+  function corDisponivel(valorCor) {
+    const variacao = produto.variacoes.find((v) => v.cor === valorCor);
+    return (variacao?.grades ?? []).some(
+      (g) => g.estoqueAtual > 0 && (!tamanho || g.tamanho === tamanho)
+    );
   }
 
-  const capa = imagemUrl(imagemAtiva ?? variacao?.imagemUrl ?? fotos[0] ?? null);
-  const semEstoque = !variacao || variacao.estoqueAtual <= 0;
+  function tamanhoDisponivel(valorTamanho) {
+    const origem = variacaoSelecionada ? [variacaoSelecionada] : produto.variacoes;
+    return origem.some((v) =>
+      (v.grades ?? []).some((g) => g.tamanho === valorTamanho && g.estoqueAtual > 0)
+    );
+  }
+
+  // A foto acompanha a cor escolhida.
+  const capa = imagemUrl(imagemAtiva ?? variacaoSelecionada?.imagemUrl ?? fotos[0] ?? null);
+  const semEstoque = !grade || grade.estoqueAtual <= 0;
 
   function aoAdicionar(irParaCarrinho) {
-    if (!variacao) {
-      setAviso("Escolha tamanho e cor antes de adicionar.");
+    if (!grade) {
+      setAviso("Escolha a cor e o tamanho antes de adicionar.");
       return;
     }
-    if (variacao.estoqueAtual <= 0) {
+    if (grade.estoqueAtual <= 0) {
       setAviso("Essa combinação está sem estoque.");
       return;
     }
     setAviso(null);
     adicionar({
-      variacaoId: variacao.id,
+      gradeId: grade.id,
       produtoId: produto.id,
       nome: produto.nome,
-      cor: variacao.cor,
-      tamanho: variacao.tamanho,
+      cor: variacaoSelecionada.cor,
+      tamanho: grade.tamanho,
       precoUnitario: Number(produto.precoVenda),
-      imagemUrl: variacao.imagemUrl,
-      estoqueAtual: variacao.estoqueAtual,
+      imagemUrl: variacaoSelecionada.imagemUrl,
+      estoqueAtual: grade.estoqueAtual,
     });
     if (irParaCarrinho) navigate("/carrinho");
   }
@@ -126,7 +147,8 @@ export default function Produto() {
           <h1>{produto.nome}</h1>
           <p className="cm-produto-preco">{formatarPreco(produto.precoVenda)}</p>
           <p className="cm-produto-parcelas">
-            até 3x de {parcelaSemJuros(produto.precoVenda)} sem juros
+            até {PARCELAS_CREDIARIO}x de {parcelaSemJuros(produto.precoVenda, PARCELAS_CREDIARIO)} sem
+            juros no crediário da loja
           </p>
 
           {produto.descricao && <p className="cm-produto-descricao">{produto.descricao}</p>}
@@ -134,13 +156,18 @@ export default function Produto() {
           {tamanhos.length > 0 && (
             <>
               <span className="cm-campo-label">Tamanho</span>
-              <div className="cm-opcoes">
+              <div className="cm-opcoes" role="group" aria-label="Tamanho">
                 {tamanhos.map((valor) => (
                   <button
                     key={valor}
+                    type="button"
                     className={"cm-opcao-caixa" + (tamanho === valor ? " ativa" : "")}
-                    disabled={!disponivel("tamanho", valor)}
-                    onClick={() => setTamanho(valor)}
+                    aria-pressed={tamanho === valor}
+                    disabled={tamanho !== valor && !tamanhoDisponivel(valor)}
+                    onClick={() => {
+                      setTamanho((atual) => atual === valor ? null : valor);
+                      setAviso(null);
+                    }}
                   >
                     {valor}
                   </button>
@@ -152,14 +179,30 @@ export default function Produto() {
           {cores.length > 0 && (
             <>
               <span className="cm-campo-label">Cor</span>
-              <div className="cm-opcoes">
+              <div className="cm-opcoes" role="group" aria-label="Cor">
                 {cores.map((valor) => (
                   <button
                     key={valor}
+                    type="button"
                     className={"cm-opcao-caixa" + (cor === valor ? " ativa" : "")}
-                    disabled={!disponivel("cor", valor)}
-                    onClick={() => setCor(valor)}
+                    aria-pressed={cor === valor}
+                    disabled={cor !== valor && !corDisponivel(valor)}
+                    onClick={() => {
+                      setCor((atual) => atual === valor ? null : valor);
+                      setAviso(null);
+                    }}
                   >
+                    <span
+                      className={
+                        "cm-bolinha" +
+                        (corHex(valor)
+                          ? corEhClara(corHex(valor))
+                            ? " cm-bolinha-clara"
+                            : ""
+                          : " cm-bolinha-desconhecida")
+                      }
+                      style={corHex(valor) ? { background: corHex(valor) } : undefined}
+                    />
                     {valor}
                   </button>
                 ))}
@@ -168,7 +211,7 @@ export default function Produto() {
           )}
 
           {aviso && <p className="cm-erro">{aviso}</p>}
-          {variacao && semEstoque && <p className="cm-erro">Essa combinação está esgotada.</p>}
+          {grade && semEstoque && <p className="cm-erro">Essa combinação está esgotada.</p>}
 
           <div className="cm-produto-acoes">
             <button className="cm-botao" onClick={() => aoAdicionar(false)} disabled={semEstoque}>

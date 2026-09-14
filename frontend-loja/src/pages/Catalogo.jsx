@@ -26,7 +26,8 @@ export default function Catalogo() {
     const termo = buscaDaUrl.toLowerCase();
     const lista = produtos.filter((produto) => {
       if (categoriaDaUrl && produto.categoria !== categoriaDaUrl) return false;
-      if (tamanho && !produto.variacoes.some((v) => v.tamanho === tamanho)) return false;
+      if (tamanho && !produto.variacoes.some((v) => (v.grades ?? []).some((g) => g.tamanho === tamanho)))
+        return false;
       if (cor && !produto.variacoes.some((v) => v.cor === cor)) return false;
       if (soNovidades && !ehNovidade(produto)) return false;
       if (termo) {
