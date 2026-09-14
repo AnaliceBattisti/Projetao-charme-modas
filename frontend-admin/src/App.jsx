@@ -15,7 +15,7 @@ import NovaCompra from "./pages/NovaCompra.jsx";
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/admin">
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route
