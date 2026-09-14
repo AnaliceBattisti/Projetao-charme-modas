@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "../api.js";
-import { IconPlus } from "../icons.jsx";
+import { IconPlus, IconSearch } from "../icons.jsx";
 import { situacao } from "../estoqueUtils.js";
+import { normalizarBusca } from "../clientesUtils.js";
 
 const emptyEntradaForm = { gradeId: "", quantidade: "", motivo: "" };
 const emptyAjusteForm = { gradeId: "", quantidade: "", motivo: "" };
+const PAGE_SIZE = 10;
 
 const TIPO_BADGE = {
   ENTRADA: "cm-badge-green",
@@ -20,6 +22,8 @@ export default function Estoque() {
   const [modo, setModo] = useState(null); // "entrada" | "ajuste" | null
   const [entradaForm, setEntradaForm] = useState(emptyEntradaForm);
   const [ajusteForm, setAjusteForm] = useState(emptyAjusteForm);
+  const [busca, setBusca] = useState("");
+  const [page, setPage] = useState(1);
 
   function loadAll() {
     setLoading(true);
@@ -98,6 +102,26 @@ export default function Estoque() {
     return `Estoque atual: ${grade.estoqueAtual} un → Estoque atualizado: ${atualizado} un`;
   }
 
+  // Busca por produto, cor, tamanho ou SKU — a tabela de situação cresce um pouco
+  // a cada cor/tamanho cadastrado, então sem filtro ela vira uma lista sem fim.
+  const filtrados = useMemo(() => {
+    const termo = normalizarBusca(busca.trim());
+    if (!termo) return grades;
+    return grades.filter((g) =>
+      [g.variacao.produto.nome, g.variacao.cor, g.tamanho, g.sku]
+        .filter(Boolean)
+        .some((campo) => normalizarBusca(campo).includes(termo))
+    );
+  }, [grades, busca]);
+  const totalPaginas = Math.max(1, Math.ceil(filtrados.length / PAGE_SIZE));
+  const paginaAtual = Math.min(page, totalPaginas);
+  const visiveis = filtrados.slice((paginaAtual - 1) * PAGE_SIZE, paginaAtual * PAGE_SIZE);
+
+  function atualizarBusca(valor) {
+    setBusca(valor);
+    setPage(1);
+  }
+
   const itensEmEstoque = grades.reduce((sum, g) => sum + g.estoqueAtual, 0);
   const totalSkus = grades.filter((g) => g.sku).length;
   const totalAlertas = grades.filter((g) => situacao(g).label !== "Adequado").length;
@@ -116,6 +140,14 @@ export default function Estoque() {
           </p>
         </div>
         <div className="cm-page-actions">
+          <div className="cm-search">
+            <IconSearch />
+            <input
+              placeholder="Buscar por produto, cor, tamanho ou SKU"
+              value={busca}
+              onChange={(e) => atualizarBusca(e.target.value)}
+            />
+          </div>
           <button
             className="cm-button-outline"
             onClick={() => setModo(modo === "ajuste" ? null : "ajuste")}
@@ -248,49 +280,80 @@ export default function Estoque() {
           <p>Carregando...</p>
         ) : grades.length === 0 ? (
           <p>Nenhuma variação cadastrada ainda.</p>
+        ) : filtrados.length === 0 ? (
+          <p>Nenhum resultado para "{busca}".</p>
         ) : (
-          <table className="cm-table">
-            <thead>
-              <tr>
-                <th>Produto</th>
-                <th>Variação</th>
-                <th>SKU</th>
-                <th>Mínimo</th>
-                <th>Atual</th>
-                <th>Situação</th>
-              </tr>
-            </thead>
-            <tbody>
-              {grades.map((v) => {
-                const s = situacao(v);
-                return (
-                  <tr key={v.id}>
-                    <td>{v.variacao.produto.nome}</td>
-                    <td>
-                      {v.variacao.cor} · {v.tamanho}
-                    </td>
-                    <td>{v.sku || "—"}</td>
-                    <td>
-                      <input
-                        className="cm-input cm-input-minimo"
-                        type="number"
-                        min="0"
-                        defaultValue={v.estoqueMinimo}
-                        title="Alerta quando o estoque chegar nesse número"
-                        onBlur={(e) => salvarMinimo(v, e.target.value)}
-                      />
-                    </td>
-                    <td>
-                      <strong>{v.estoqueAtual}</strong>
-                    </td>
-                    <td>
-                      <span className={"cm-badge " + s.badge}>{s.label}</span>
-                    </td>
+          <>
+            <div style={{ overflowX: "auto" }}>
+              <table className="cm-table">
+                <thead>
+                  <tr>
+                    <th>Produto</th>
+                    <th>Variação</th>
+                    <th>SKU</th>
+                    <th>Mínimo</th>
+                    <th>Atual</th>
+                    <th>Situação</th>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                </thead>
+                <tbody>
+                  {visiveis.map((v) => {
+                    const s = situacao(v);
+                    return (
+                      <tr key={v.id}>
+                        <td>{v.variacao.produto.nome}</td>
+                        <td>
+                          {v.variacao.cor} · {v.tamanho}
+                        </td>
+                        <td>{v.sku || "—"}</td>
+                        <td>
+                          <input
+                            className="cm-input cm-input-minimo"
+                            type="number"
+                            min="0"
+                            defaultValue={v.estoqueMinimo}
+                            title="Alerta quando o estoque chegar nesse número"
+                            onBlur={(e) => salvarMinimo(v, e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <strong>{v.estoqueAtual}</strong>
+                        </td>
+                        <td>
+                          <span className={"cm-badge " + s.badge}>{s.label}</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="cm-page-actions" style={{ justifyContent: "space-between", marginTop: 16 }}>
+              <span className="cm-text-muted">
+                {filtrados.length} {filtrados.length === 1 ? "variação" : "variações"}
+                {busca ? " encontradas" : " cadastradas"}
+              </span>
+              {totalPaginas > 1 && (
+                <nav className="cm-page-actions" aria-label="Paginação do estoque">
+                  <button
+                    className="cm-button-outline"
+                    disabled={paginaAtual === 1}
+                    onClick={() => setPage(paginaAtual - 1)}
+                  >
+                    Anterior
+                  </button>
+                  <span className="cm-text-muted">{paginaAtual} de {totalPaginas}</span>
+                  <button
+                    className="cm-button-outline"
+                    disabled={paginaAtual === totalPaginas}
+                    onClick={() => setPage(paginaAtual + 1)}
+                  >
+                    Próxima
+                  </button>
+                </nav>
+              )}
+            </div>
+          </>
         )}
       </div>
 

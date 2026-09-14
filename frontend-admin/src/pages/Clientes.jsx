@@ -464,7 +464,17 @@ function ClientePerfil({ id, onEdit, onDelete, onUpdate, busy, onBusy }) {
           </section>
         )}
         {tab === "enderecos" && <ClienteEnderecos cliente={cliente} onChange={(value) => { setCliente(value); onUpdate(value); }} busy={busy} onBusy={onBusy} />}
-        {tab === "compras" && <HistoricoCompras compras={cliente.compras} />}
+        {tab === "compras" && (
+          <HistoricoCompras
+            compras={cliente.compras}
+            busy={busy}
+            onBusy={onBusy}
+            // A baixa muda o limite disponível do crediário (aba Crediário) e o
+            // status de outras parcelas da mesma compra, então recarrega o
+            // cliente inteiro em vez de tentar remendar o estado local.
+            onPago={() => setReload((r) => r + 1)}
+          />
+        )}
         {tab === "credito" && <CreditoCliente cliente={cliente} />}
       </div>
     </div>
@@ -557,10 +567,29 @@ function ClienteEnderecos({ cliente, onChange, busy, onBusy }) {
   );
 }
 
-function HistoricoCompras({ compras }) {
+function HistoricoCompras({ compras, busy, onBusy, onPago }) {
+  // Qual parcela está com o "Confirmar baixa?" aberto — só uma por vez.
+  const [alvo, setAlvo] = useState(null);
+  const [error, setError] = useState("");
+
+  async function darBaixa(parcela) {
+    setError("");
+    onBusy(true);
+    try {
+      await api.put(`/parcelas/baixa/${parcela.id}`);
+      setAlvo(null);
+      onPago();
+    } catch (err) {
+      setError(mensagemErro(err));
+    } finally {
+      onBusy(false);
+    }
+  }
+
   return (
     <section>
       <h3 className="cm-section-title">Histórico de compras</h3>
+      <ErroFormulario error={error} />
       {compras.length === 0 ? <p className="cm-text-muted">Este cliente ainda não tem compras registradas.</p> : compras.map((compra) => (
         <details className="cm-card" style={{ marginBottom: 16 }} key={compra.id}>
           <summary style={{ cursor: "pointer" }}>
@@ -584,15 +613,32 @@ function HistoricoCompras({ compras }) {
           <h4 className="cm-section-title" style={{ marginTop: 20 }}>Parcelas</h4>
           {compra.parcelas.length === 0 ? <p className="cm-text-muted">Esta compra não possui parcelas.</p> : (
             <table className="cm-table" aria-label={`Parcelas da compra ${compra.id}`}>
-              <thead><tr><th scope="col">Parcela</th><th scope="col">Vencimento</th><th scope="col">Valor</th><th scope="col">Situação</th></tr></thead>
-              <tbody>{compra.parcelas.map((parcela) => (
-                <tr key={parcela.id}>
-                  <td>{parcela.numero}</td><td>{data(parcela.dataVencimento)}</td><td>{moeda(parcela.valor)}</td>
-                  <td><span className={`cm-badge ${parcela.status === "PAGA" ? "cm-badge-green" : parcelaAtrasada(parcela) ? "cm-badge-red" : "cm-badge-yellow"}`}>
-                    {parcela.status === "PAGA" ? "Paga" : parcelaAtrasada(parcela) ? "Atrasada" : "Pendente"}
-                  </span></td>
-                </tr>
-              ))}</tbody>
+              <thead><tr><th scope="col">Parcela</th><th scope="col">Vencimento</th><th scope="col">Valor</th><th scope="col">Situação</th><th scope="col">Ação</th></tr></thead>
+              <tbody>{compra.parcelas.map((parcela) => {
+                const atrasada = parcelaAtrasada(parcela);
+                // Só dá pra dar baixa em parcela ainda em aberto — paga é paga,
+                // e cancelada veio de uma compra que já foi estornada.
+                const emAberto = !["PAGA", "CANCELADA"].includes(parcela.status);
+                return (
+                  <tr key={parcela.id}>
+                    <td>{parcela.numero}</td><td>{data(parcela.dataVencimento)}</td><td>{moeda(parcela.valor)}</td>
+                    <td><span className={`cm-badge ${parcela.status === "PAGA" ? "cm-badge-green" : parcela.status === "CANCELADA" ? "cm-badge-gray" : atrasada ? "cm-badge-red" : "cm-badge-yellow"}`}>
+                      {parcela.status === "PAGA" ? "Paga" : parcela.status === "CANCELADA" ? "Cancelada" : atrasada ? "Atrasada" : "Pendente"}
+                    </span></td>
+                    <td>
+                      {emAberto && (alvo === parcela.id ? (
+                        <span style={{ display: "inline-flex", gap: 10, alignItems: "center", whiteSpace: "nowrap" }}>
+                          <span className="cm-text-muted">Confirmar baixa de {moeda(parcela.valor)}?</span>
+                          <button className="cm-link-button" disabled={busy} onClick={() => darBaixa(parcela)}>{busy ? "Confirmando..." : "Sim"}</button>
+                          <button className="cm-link-button" disabled={busy} onClick={() => setAlvo(null)}>Cancelar</button>
+                        </span>
+                      ) : (
+                        <button className="cm-link-button" disabled={busy} onClick={() => { setAlvo(parcela.id); setError(""); }}>Dar baixa</button>
+                      ))}
+                    </td>
+                  </tr>
+                );
+              })}</tbody>
             </table>
           )}
         </details>
