@@ -1,4 +1,4 @@
-import { ValidationError, validateCliente } from "./clientes.js";
+import { ValidationError, validateCliente, validateUsuario } from "./clientes.js";
 
 function validarObjeto(body, campos) {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
@@ -46,6 +46,23 @@ export function validarCadastro(body) {
     throw new ValidationError("As senhas precisam ser iguais.");
   dadosCliente.email = validarEmail(body.email);
   const cliente = validateCliente(dadosCliente);
+  return { cliente, senha };
+}
+
+export function validarPrimeiroAcesso(body) {
+  validarObjeto(body, [
+    "nome",
+    "email",
+    "senha",
+    "confirmacao",
+    "cpf"
+  ]);
+  const { senha, confirmacao, ...dadosCliente } = body;
+  validarSenha(senha);
+  if (confirmacao !== senha)
+    throw new ValidationError("As senhas precisam ser iguais.");
+  dadosCliente.email = validarEmail(body.email);
+  const cliente = validateUsuario(dadosCliente);
   return { cliente, senha };
 }
 

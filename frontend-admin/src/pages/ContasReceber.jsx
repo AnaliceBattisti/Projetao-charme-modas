@@ -35,12 +35,14 @@ export default function ContasReceber() {
     PENDENTE: "cm-badge-yellow",
     ATRASADA: "cm-badge-red",
     PAGA: "cm-badge-green",
+    CANCELADA: "cm-badge-gray",
   };
 
   const STATUS_TEXTO = {
     PENDENTE: "Pendente",
     ATRASADA: "Atrasada",
     PAGA: "Paga",
+    CANCELADA: "Cancelada"
   };
 
   async function handleRegistrarPagamento(e) {
