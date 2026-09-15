@@ -17,6 +17,7 @@ import RedefinirSenha from "./pages/RedefinirSenha.jsx";
 import Contato from "./pages/Contato.jsx";
 import Informacoes from "./pages/Informacoes.jsx";
 import "./styles/conta.css";
+import PrimeiroAcesso from "./pages/PrimeiroAcesso.jsx";
 
 export default function App() {
   return (
@@ -37,6 +38,7 @@ export default function App() {
             <Route path="/esqueci-senha" element={<EsqueciSenha />} />
             <Route path="/redefinir-senha" element={<RedefinirSenha />} />
             <Route path="/cadastro" element={<Cadastro />} />
+            <Route path="/primeiro-acesso" element={<PrimeiroAcesso />} />
             <Route path="/minha-conta" element={<Login />} />
             <Route path="/minha-conta/editar" element={<EditarConta />} />
             <Route path="/contato" element={<Contato />} />

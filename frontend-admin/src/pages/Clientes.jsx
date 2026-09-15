@@ -44,6 +44,14 @@ const visual = {
   input: { display: "block", height: 40, margin: "6px 0 0", background: "white", fontFamily: "inherit", fontSize: 12, fontWeight: 400 },
 };
 
+
+const STATUS_BADGE = {
+  PENDENTE: "cm-badge-yellow",
+  ATRASADA: "cm-badge-red",
+  PAGA: "cm-badge-green",
+  CANCELADA: "cm-badge-gray",
+};
+
 // Listagem e ações do cadastro. Formulários e perfil ficam abaixo, nesta mesma página.
 export default function Clientes() {
   const [clientes, setClientes] = useState([]);
@@ -55,9 +63,16 @@ export default function Clientes() {
   const [comprasError, setComprasError] = useState("");
   const [notice, setNotice] = useState("");
   const [reload, setReload] = useState(0);
+  const [profileReload, setProfileReload] = useState(0);
   const [modal, setModal] = useState(null);
   const [modalError, setModalError] = useState("");
   const [busy, setBusy] = useState(false);
+
+  const [parcelaEmFoco, setParcelaEmFoco] = useState(null);
+  const [showParcelaModal, setShowParcelaModal] = useState(false);
+  const [loadingRegisterParcela, setLoadingRegisterParcela] = useState(false);
+  const [errorRegisterParcela, setErrorRegisterParcela] = useState(false);
+  const intlCurr = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })
 
   useEffect(() => {
     const controller = new AbortController();
@@ -148,6 +163,42 @@ export default function Clientes() {
     }
   }
 
+  const handleAbrirParcelaModal = (parcelas, parcelaId, cliente) => {
+    const parcela = parcelas.find(p=>p.id == parcelaId);
+    setLoadingRegisterParcela(false);
+    setErrorRegisterParcela(false);
+
+    if(parcela){
+      parcela.total = parcelas.length;
+      parcela.cliente = cliente;
+      setParcelaEmFoco(parcela);
+      setShowParcelaModal(true);
+    }
+  };
+
+
+  const handleFecharParcelaModal = () => {
+    setShowParcelaModal(false);
+    setParcelaEmFoco(null);
+    setLoadingRegisterParcela(false);
+    setErrorRegisterParcela(false);
+  };
+
+  async function handleRegistrarPagamento(e) {
+    e.preventDefault();
+    setErrorRegisterParcela(false);
+    setLoadingRegisterParcela(true);
+    try {
+      await api.put(`/parcelas/baixa/${parcelaEmFoco.id}`);
+      handleFecharParcelaModal();
+      setReload((prev) => prev + 1);
+      setProfileReload((prev) => prev + 1);
+    } catch (err) {
+      console.log(err)
+      setErrorRegisterParcela(true);
+    }
+  }
+
   return (
     <div style={visual.page}>
       <div className="cm-page-header" style={{ marginBottom: 22 }}>
@@ -232,7 +283,7 @@ export default function Clientes() {
           style={{ ...visual.modal, ...(modal.type === "delete" ? { width: "min(520px, 100%)" } : {}) }}
           title={<span style={visual.modalTitle}>{({ create: "Novo cliente", edit: "Editar cliente", profile: "Perfil do cliente", delete: "Excluir cliente" })[modal.type]}</span>}>
           {["create", "edit"].includes(modal.type) && <ClienteForm cliente={modal.cliente} onSave={salvar} onCancel={fechar} busy={busy} error={modalError} />}
-          {modal.type === "profile" && <ClientePerfil id={modal.cliente.id} onEdit={(cliente) => abrir("edit", cliente)} onDelete={(cliente) => abrir("delete", cliente)} onUpdate={atualizar} busy={busy} onBusy={setBusy} />}
+          {modal.type === "profile" && <ClientePerfil id={modal.cliente.id} onEdit={(cliente) => abrir("edit", cliente)} onDelete={(cliente) => abrir("delete", cliente)} onUpdate={atualizar} busy={busy} onBusy={setBusy} handleAbrirParcelaModal={handleAbrirParcelaModal} onRefresh={profileReload}/>}
           {modal.type === "delete" && (
             <div>
               <p>Deseja excluir <strong>{modal.cliente.nome}</strong>?</p>
@@ -248,6 +299,130 @@ export default function Clientes() {
           )}
         </Modal>
       )}
+
+      <Modal open={showParcelaModal} onClose={() => { setShowParcelaModal(false); setParcelaEmFoco(null) }} title="Confirmar Pagamento">
+        <div style={{ marginTop: "12px" }}>
+          {errorRegisterParcela && <div className="cm-error">Error inesperado ao dar baixa em parcela, contate operador.</div>}
+
+          <div
+            className="cm-card"
+            style={{
+              background: "var(--cm-surface-alt)",
+              marginBottom: "20px",
+              padding: "16px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                marginBottom: "12px",
+              }}
+            >
+              <div>
+                <label className="cm-label" style={{ marginBottom: "2px" }}>
+                  Cliente
+                </label>
+                <div style={{ fontWeight: 600, color: "var(--cm-plum)" }}>
+                  {parcelaEmFoco?.cliente.nome}
+                </div>
+              </div>
+
+              <span
+                className={
+                  "cm-badge " + (STATUS_BADGE[parcelaEmFoco?.status] || "cm-badge-gray")
+                }
+              >
+                {parcelaEmFoco?.status}
+              </span>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "12px",
+                paddingTop: "12px",
+                borderTop: "1px solid var(--cm-border)",
+              }}
+            >
+              <div>
+                <label className="cm-label" style={{ marginBottom: "2px" }}>
+                  Parcela
+                </label>
+                <div>
+                  {`${parcelaEmFoco?.numero}/${parcelaEmFoco?.total}`}
+                </div>
+              </div>
+
+              <div>
+                <label className="cm-label" style={{ marginBottom: "2px" }}>
+                  Vencimento
+                </label>
+                <div>
+                  {new Date(parcelaEmFoco?.dataVencimento).toLocaleDateString("pt-BR", {
+                    timeZone: "UTC",
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div
+            style={{
+              textAlign: "center",
+              padding: "16px",
+              background: "var(--cm-surface)",
+              border: "1px solid var(--cm-border)",
+              borderRadius: "10px",
+              marginBottom: "24px",
+            }}
+          >
+            <div className="cm-text-muted" style={{ fontSize: "0.85rem" }}>
+              Valor total a ser baixado
+            </div>
+            <div
+              style={{
+                fontSize: "1.8rem",
+                fontWeight: "700",
+                color: "var(--cm-vinho)",
+                marginTop: "4px",
+              }}
+            >
+              {intlCurr.format(parcelaEmFoco?.valor)}
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              gap: "12px",
+              justifyContent: "flex-end",
+              alignItems: "center",
+            }}
+          >
+            <button
+              type="button"
+              className="cm-button-outline"
+              onClick={handleFecharParcelaModal}
+              disabled={loading}
+            >
+              Cancelar
+            </button>
+
+            <button
+              type="button"
+              className="cm-button-pill"
+              onClick={handleRegistrarPagamento}
+              disabled={loading}
+              style={{ minWidth: "140px", justifyContent: "center" }}
+            >
+              {loadingRegisterParcela ? "Processando..." : "Confirmar Baixa"}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -404,7 +579,7 @@ function ClienteForm({ cliente, onSave, onCancel, busy, error }) {
 }
 
 // Perfil: dados pessoais, endereços, histórico e consulta do crediário.
-function ClientePerfil({ id, onEdit, onDelete, onUpdate, busy, onBusy }) {
+function ClientePerfil({ id, onEdit, onDelete, onUpdate, busy, onBusy, handleAbrirParcelaModal, onRefresh }) {
   const [cliente, setCliente] = useState(null);
   const [error, setError] = useState("");
   const [tab, setTab] = useState("cadastro");
@@ -418,7 +593,7 @@ function ClientePerfil({ id, onEdit, onDelete, onUpdate, busy, onBusy }) {
       .then((value) => { if (!controller.signal.aborted) setCliente(value); })
       .catch((err) => { if (!controller.signal.aborted) setError(mensagemErro(err)); });
     return () => controller.abort();
-  }, [id, reload]);
+  }, [id, reload, onRefresh]);
 
   if (error) return <div className="cm-error" role="alert"><p>{error}</p><button className="cm-link-button" style={visual.link} onClick={() => setReload(reload + 1)}>Tentar novamente</button></div>;
   if (!cliente) return <p role="status">Carregando perfil...</p>;
@@ -464,7 +639,7 @@ function ClientePerfil({ id, onEdit, onDelete, onUpdate, busy, onBusy }) {
           </section>
         )}
         {tab === "enderecos" && <ClienteEnderecos cliente={cliente} onChange={(value) => { setCliente(value); onUpdate(value); }} busy={busy} onBusy={onBusy} />}
-        {tab === "compras" && <HistoricoCompras compras={cliente.compras} />}
+        {tab === "compras" && <HistoricoCompras cliente={cliente} compras={cliente.compras} handleAbrirParcelaModal={handleAbrirParcelaModal}/>}
         {tab === "credito" && <CreditoCliente cliente={cliente} />}
       </div>
     </div>
@@ -557,7 +732,7 @@ function ClienteEnderecos({ cliente, onChange, busy, onBusy }) {
   );
 }
 
-function HistoricoCompras({ compras }) {
+function HistoricoCompras({ compras, cliente, handleAbrirParcelaModal }) {
   return (
     <section>
       <h3 className="cm-section-title">Histórico de compras</h3>
@@ -584,13 +759,24 @@ function HistoricoCompras({ compras }) {
           <h4 className="cm-section-title" style={{ marginTop: 20 }}>Parcelas</h4>
           {compra.parcelas.length === 0 ? <p className="cm-text-muted">Esta compra não possui parcelas.</p> : (
             <table className="cm-table" aria-label={`Parcelas da compra ${compra.id}`}>
-              <thead><tr><th scope="col">Parcela</th><th scope="col">Vencimento</th><th scope="col">Valor</th><th scope="col">Situação</th></tr></thead>
+              <thead><tr><th scope="col">Parcela</th><th scope="col">Vencimento</th><th scope="col">Valor</th><th scope="col">Situação</th><th scope="col">Ações</th></tr></thead>
               <tbody>{compra.parcelas.map((parcela) => (
                 <tr key={parcela.id}>
                   <td>{parcela.numero}</td><td>{data(parcela.dataVencimento)}</td><td>{moeda(parcela.valor)}</td>
                   <td><span className={`cm-badge ${parcela.status === "PAGA" ? "cm-badge-green" : parcelaAtrasada(parcela) ? "cm-badge-red" : "cm-badge-yellow"}`}>
                     {parcela.status === "PAGA" ? "Paga" : parcelaAtrasada(parcela) ? "Atrasada" : "Pendente"}
                   </span></td>
+                  {
+                    ["PAGA", "CANCELADA"].includes(parcela.status) ? <td>---</td>:
+                    (<td>
+                      <button
+                        className="cm-link-button"
+                        onClick={() => handleAbrirParcelaModal(compra.parcelas, parcela.id, cliente)}
+                      >
+                        <strong>Registrar Pagamento</strong>
+                      </button>
+                    </td> )
+                  }
                 </tr>
               ))}</tbody>
             </table>
