@@ -9,7 +9,7 @@ import {
 } from "../lib/sessoes.js";
 import { limitarTentativas } from "../middleware/limitarTentativas.js";
 import { exigirConta } from "../middleware/exigirConta.js";
-import { validarCadastro, validarLogin } from "../validation/auth.js";
+import { validarCadastro, validarLogin, validarPrimeiroAcesso } from "../validation/auth.js";
 import recuperacaoSenhaRouter from "./recuperacaoSenha.js";
 import { enviarPedido, listarPedidos, consultarPedido } from "../services/pedidos.js";
 import {
@@ -104,6 +104,49 @@ router.post(
     res.status(201).json({ usuario });
   }),
 );
+
+router.post(
+  "/primeiro-acesso",
+  limitarTentativas(),
+  asyncRoute(async (req, res) => {
+    const { cliente, senha } = validarPrimeiroAcesso(req.body);
+    const [usuarioExistente, clienteExistente] = await Promise.all([
+      prisma.usuario.findFirst({
+        where: { email: { equals: cliente.email, mode: "insensitive" } },
+        select: { id: true },
+      }),
+      prisma.cliente.findFirst({
+        where: { cpf: { in: cpfFormats(cliente.cpf) } },
+        select: { id: true },
+      }),
+    ]);
+    if (usuarioExistente) {
+      return res.status(409).json({
+        error:
+          "Conta já registrada para este e-mail. Entre na sua conta ou fale com a loja para ajustar seu cadastro existente.",
+      });
+    }
+    if (!clienteExistente) {
+      return res.status(404).json({
+        error:
+          "Nenhum Cliente registrado para esse CPF.",
+      });
+    }
+    const senhaHash = await gerarSenhaHash(senha);
+    const usuario = await prisma.usuario.create({
+      data: {
+        nome: cliente.nome,
+        email: cliente.email,
+        senhaHash,
+        papel: "CLIENTE",
+        clienteId: Number(clienteExistente.id),
+      },
+      select: selecionarUsuario,
+    });
+    res.status(201).json({ usuario });
+  }),
+);
+
 
 router.post(
   "/login",

@@ -119,3 +119,17 @@ export function validateCliente(body, { partial = false } = {}) {
   }
   return data;
 }
+
+export function validateUsuario(body, { partial = false } = {}) {
+  const fields = ["nome", "cpf", "email"];
+  objectBody(body, fields);
+  const data = {};
+  if (!partial || Object.hasOwn(body, "nome")) data.nome = text(body.nome, "Nome", { required: true });
+  if (!partial || Object.hasOwn(body, "cpf")) data.cpf = normalizeCpf(body.cpf);
+  if (Object.hasOwn(body, "email")) {
+    const email = text(body.email, "E-mail", { max: 254 });
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) invalid("Informe um e-mail válido.");
+    data.email = email?.toLowerCase() ?? null;
+  }
+  return data;
+}

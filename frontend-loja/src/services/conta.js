@@ -2,6 +2,8 @@ import { request } from "../api.js";
 
 export const cadastrarConta = (dados) =>
   request("/auth/cadastro", { method: "POST", body: dados });
+export const primeiroAcessoConta = (dados) =>
+  request("/auth/primeiro-acesso", { method: "POST", body: dados });
 export const entrarNaConta = (dados) =>
   request("/auth/login", { method: "POST", body: dados });
 export const consultarConta = () => request("/auth/me");

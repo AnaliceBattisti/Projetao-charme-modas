@@ -191,9 +191,13 @@ export default function Login() {
             {mensagem}
           </p>
         )}
-        <p className="conta-login-cadastro">Ainda não tem uma conta?</p>
+        <p className="conta-login-cadastro">Primeira vez na loja?</p>
         <Link className="cm-botao cm-botao-claro" to="/cadastro">
           Criar conta
+        </Link>
+        <p className="conta-login-cadastro">Já comprou na loja física?</p>
+        <Link className="cm-botao cm-botao-claro" to="/primeiro-acesso">
+          Primeiro Acesso
         </Link>
         <Link className="conta-link conta-continuar" to="/catalogo">
           Continuar sem login
