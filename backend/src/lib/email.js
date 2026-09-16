@@ -33,8 +33,10 @@ export function configuracaoEmail() {
     (loja.protocol !== "https:" &&
       (process.env.NODE_ENV === "production" ||
         !["localhost", "127.0.0.1", "[::1]"].includes(loja.hostname)))
-  )
+  ) {
+    console.error("Validação falhou! O que o Node recebeu:", { host, port, from, secure: process.env.SMTP_SECURE, url: loja?.href });
     throw new ConfiguracaoEmailError();
+  } 
   const local =
     process.env.NODE_ENV !== "production" &&
     ["localhost", "127.0.0.1", "::1"].includes(host);
