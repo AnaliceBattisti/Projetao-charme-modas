@@ -3,13 +3,42 @@ import { useNavigate } from "react-router-dom";
 import { login } from "../auth.js";
 
 export default function Login() {
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
+  const [erro, setErro] = useState("");
+  const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
-    login();
-    navigate("/", { replace: true });
+    setErro("");
+
+    if (!email || !senha) {
+      return setErro("Por favor, preencha o e-mail e a senha.");
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, senha })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "E-mail ou senha inválidos.");
+      }
+
+      login(data.usuario); 
+      navigate("/", { replace: true });
+    } catch (err) {
+      setErro(err.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -36,15 +65,18 @@ export default function Login() {
               className="cm-input"
               type="text"
               placeholder="admin@charmemodas.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
             />
 
             <div className="cm-label-row">
               <label className="cm-label" htmlFor="login-password">
                 Senha
               </label>
-              <a className="cm-link" href="#">
+              <Link className="cm-link" to="/recuperar-senha">
                 Esqueci minha senha
-              </a>
+              </Link>
             </div>
             <div className="cm-password-wrap">
               <input
@@ -52,6 +84,9 @@ export default function Login() {
                 className="cm-input"
                 type={showPassword ? "text" : "password"}
                 placeholder="••••••"
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                disabled={loading}
               />
               <button
                 type="button"
@@ -63,8 +98,8 @@ export default function Login() {
               </button>
             </div>
 
-            <button className="cm-button" type="submit">
-              Entrar →
+            <button className="cm-button" type="submit" disabled={loading}>
+              {loading ? "Entrando..." : "Entrar →"}
             </button>
           </form>
 
