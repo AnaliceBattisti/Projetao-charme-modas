@@ -7,7 +7,7 @@ const opcoesCookie = () => ({
   httpOnly: true,
   sameSite: "lax",
   secure: process.env.NODE_ENV === "production",
-  path: "/auth",
+  path: "/",
 });
 const hashToken = (token) => createHash("sha256").update(token).digest("hex");
 
