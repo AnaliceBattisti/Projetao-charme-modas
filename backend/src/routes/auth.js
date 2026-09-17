@@ -447,7 +447,7 @@ router.use((error, req, res, next) => {
       .status(404)
       .json({ error: "Cadastro ou endereço não encontrado." });
   // Não registrar corpo da requisição, credenciais ou argumentos de queries.
-  console.error("Falha no serviço de contas:", error.code || error.name);
+  console.error("Falha detalhada no backend:", error);
   res.status(500).json({
     error: "Não foi possível acessar o serviço de contas. Tente novamente.",
   });
