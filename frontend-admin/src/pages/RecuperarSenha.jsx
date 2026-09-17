@@ -19,7 +19,7 @@ export default function RecuperarSenha() {
     setLoading(true);
   try {
     // Ajuste o caminho da URL caso sua rota no backend seja diferente
-    const response = await fetch("/api/auth/recuperar-senha", {
+    const response = await fetch("/api/auth/admin/recuperar-senha", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email })

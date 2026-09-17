@@ -50,7 +50,7 @@ export default function RedefinirSenha() {
 
     try {
       // Disparo para a API do Admin
-      const response = await fetch("/api/auth/redefinir-senha", {
+      const response = await fetch("/api/auth/admin/redefinir-senha", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ senha: dados.senha, token })
