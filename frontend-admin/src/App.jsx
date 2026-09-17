@@ -12,12 +12,14 @@ import Compras from "./pages/Compras.jsx";
 import Configuracoes from "./pages/Configuracoes.jsx";
 import ContasReceber from "./pages/ContasReceber.jsx";
 import NovaCompra from "./pages/NovaCompra.jsx";
+import RecuperarSenha from "./pages/RecuperarSenha.jsx";
 
 export default function App() {
   return (
     <BrowserRouter basename="/admin">
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/recuperar-senha" element={<RecuperarSenha />} />
         <Route
           element={
             <RequireAuth>
