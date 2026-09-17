@@ -19,6 +19,7 @@ import {
   validateId,
   ValidationError,
 } from "../validation/clientes.js";
+import { configuracaoEmail, enviarEmail, ConfiguracaoEmailError } from "../lib/email.js";
 
 const router = Router();
 const asyncRoute = (handler) => (req, res, next) =>
