@@ -167,6 +167,30 @@ router.post(
   }),
 );
 
+router.post(
+  "/admin/login",
+  limitarTentativas(),
+  asyncRoute(async (req, res) => {
+    const { email, senha } = validarLogin(req.body);
+    
+    const usuario = await prisma.usuario.findFirst({
+      where: { email: { equals: email, mode: "insensitive" } },
+      select: { ...selecionarUsuario, senhaHash: true },
+    });
+    
+    const senhaCorreta = await verificarSenha(senha, usuario?.senhaHash);
+    
+    // Barra quem errar a senha ou não for ADMIN
+    if (!senhaCorreta || usuario?.papel !== "ADMIN") {
+      return res.status(401).json({ error: "E-mail ou senha inválidos, ou acesso negado." });
+    }
+    
+    await iniciarSessao(req, res, usuario.id);
+    const { senhaHash, ...dadosPublicos } = usuario;
+    res.json({ usuario: dadosPublicos });
+  }),
+);
+
 // Toda operação da própria conta usa o vínculo da sessão, nunca um ID enviado pelo cliente.
 router.use("/me", exigirConta);
 router.get("/me", (req, res) => res.json({ usuario: req.usuario }));

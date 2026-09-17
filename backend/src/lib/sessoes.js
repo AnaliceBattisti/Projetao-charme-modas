@@ -89,3 +89,23 @@ export async function usuarioDaSessao(req) {
     return null;
   return sessao.usuario;
 }
+
+export async function adminDaSessao(req) {
+  const token = tokenDaRequisicao(req);
+  if (!token) return null;
+  
+  const sessao = await prisma.sessaoUsuario.findUnique({
+    where: { tokenHash: hashToken(token) },
+    select: { expiraEm: true, usuario: { select: selecionarUsuario } },
+  });
+  
+  if (
+    !sessao ||
+    sessao.expiraEm <= new Date() ||
+    sessao.usuario.papel !== "ADMIN"
+  ) {
+    return null;
+  }
+  
+  return sessao.usuario;
+}
