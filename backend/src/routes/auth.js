@@ -194,7 +194,7 @@ router.post(
 );
 
 router.post(
-  "/recuperar-senha",
+  "/admin/recuperar-senha",
   limitarTentativas(),
   asyncRoute(async (req, res) => {
     const { email } = req.body;
@@ -238,7 +238,7 @@ router.post(
 );
 
 router.post(
-  "/redefinir-senha",
+  "/admin/redefinir-senha",
   limitarTentativas(),
   asyncRoute(async (req, res) => {
     const { token, senha } = req.body;
