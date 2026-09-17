@@ -33,6 +33,8 @@ services:
       - SMTP_PASS=${SMTP_PASS}
     depends_on:
       - postgres
+    volumes:
+      - charme_modas_uploads:/app/uploads
     networks:
       - app-network
 
@@ -72,3 +74,4 @@ networks:
 
 volumes:
   charme_modas_pgdata:
+  charme_modas_uploads:
