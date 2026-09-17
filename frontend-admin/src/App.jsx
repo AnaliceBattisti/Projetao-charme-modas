@@ -13,6 +13,7 @@ import Configuracoes from "./pages/Configuracoes.jsx";
 import ContasReceber from "./pages/ContasReceber.jsx";
 import NovaCompra from "./pages/NovaCompra.jsx";
 import RecuperarSenha from "./pages/RecuperarSenha.jsx";
+import RedefinirSenha from "./pages/RedefinirSenha.jsx";
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/recuperar-senha" element={<RecuperarSenha />} />
+        <Route path="/redefinir-senha" element={<RedefinirSenha />} />
         <Route
           element={
             <RequireAuth>
