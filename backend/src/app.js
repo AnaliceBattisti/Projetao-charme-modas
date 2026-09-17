@@ -15,15 +15,14 @@ export const app = express();
 
 app.set('trust proxy', 1);
 
-app.use("/auth", authRouter);
-app.use(cors());
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
 app.use(express.json());
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
-app.get("/health", (req, res) => {
-  res.json({ status: "ok" });
-});
-
+app.use("/auth", authRouter);
 app.use("/fornecedores", fornecedoresRouter);
 app.use("/produtos", produtosRouter);
 app.use("/estoque", estoqueRouter);
@@ -31,6 +30,10 @@ app.use("/clientes", clientesRouter);
 app.use("/crediarios", crediarioRouter);
 app.use("/compras", comprasRouter);
 app.use("/parcelas", parcelasRouter);
+
+app.get("/health", (req, res) => {
+  res.json({ status: "ok" });
+});
 
 app.use((error, req, res, next) => {
   if (res.headersSent) return next(error);
