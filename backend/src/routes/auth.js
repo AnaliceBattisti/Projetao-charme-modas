@@ -238,6 +238,39 @@ router.post(
   })
 );
 
+router.post(
+  "/redefinir-senha",
+  limitarTentativas(),
+  asyncRoute(async (req, res) => {
+    const { email, novaSenha } = req.body;
+
+    if (!email || !novaSenha) {
+      return res.status(400).json({ error: "E-mail e nova senha são obrigatórios." });
+    }
+
+    if (novaSenha.length < 6) {
+      return res.status(400).json({ error: "A senha deve ter pelo menos 6 caracteres." });
+    }
+
+    const usuario = await prisma.usuario.findFirst({
+      where: { email: { equals: email, mode: "insensitive" } },
+    });
+
+    if (!usuario || usuario.papel !== "ADMIN") {
+      return res.status(404).json({ error: "Usuário administrativo não encontrado." });
+    }
+
+    const senhaHash = await gerarSenhaHash(novaSenha);
+
+    await prisma.usuario.update({
+      where: { id: usuario.id },
+      data: { senhaHash },
+    });
+
+    res.json({ message: "Senha redefinida com sucesso!" });
+  })
+);
+
 // Toda operação da própria conta usa o vínculo da sessão, nunca um ID enviado pelo cliente.
 router.use("/me", exigirConta);
 router.get("/me", (req, res) => res.json({ usuario: req.usuario }));
