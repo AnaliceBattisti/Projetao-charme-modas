@@ -224,7 +224,7 @@ router.post(
         });
       }
 
-      const linkRecuperacao = `${config.loja}/admin/redefinir-senha?email=${encodeURIComponent(email)}`;
+      const linkRecuperacao = `${config.loja}/admin/redefinir-senha#token=${token}`;
       const textoMensagem = `Olá, ${usuario.nome}.\n\nVocê solicitou a recuperação de senha para o painel administrativo da Charme Modas.\n\nAcesse o link abaixo para continuar:\n${linkRecuperacao}\n\nSe você não solicitou isso, ignore este e-mail.`;
 
       // Dispara o e-mail em segundo plano usando a função existente
