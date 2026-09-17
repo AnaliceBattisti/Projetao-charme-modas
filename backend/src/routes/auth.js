@@ -203,52 +203,6 @@ router.post(
       return res.status(400).json({ error: "E-mail obrigatório." });
     }
 
-    // Busca o usuário no banco (opcionalmente validando se é admin ou cliente)
-    const usuario = await prisma.usuario.findFirst({
-      where: { email: { equals: email, mode: "insensitive" } },
-    });
-
-    if (usuario) {
-      // Monta o link utilizando a URL da loja configurada no ambiente
-      let config;
-      try {
-        config = configuracaoEmail();
-      } catch (err) {
-        if (err instanceof ConfiguracaoEmailError) {
-          console.error("Configuração de e-mail inválida ou ausente no ambiente.");
-        }
-        // Mesmo se o e-mail não estiver configurado no servidor, 
-        // fingimos sucesso para o usuário por segurança
-        return res.json({ 
-          message: "Se o e-mail estiver cadastrado, as instruções foram enviadas." 
-        });
-      }
-
-      const linkRecuperacao = `${config.loja}/admin/redefinir-senha#token=${token}`;
-      const textoMensagem = `Olá, ${usuario.nome}.\n\nVocê solicitou a recuperação de senha para o painel administrativo da Charme Modas.\n\nAcesse o link abaixo para continuar:\n${linkRecuperacao}\n\nSe você não solicitou isso, ignore este e-mail.`;
-
-      // Dispara o e-mail em segundo plano usando a função existente
-      enviarEmail(config, usuario.email, "Redefinição de Senha - Charme Modas", textoMensagem).catch(err => {
-        console.error("Erro ao disparar e-mail de recuperação:", err);
-      });
-    }
-    
-    return res.json({ 
-      message: "Se o e-mail estiver cadastrado, as instruções foram enviadas." 
-    });
-  })
-);
-
-router.post(
-  "/redefinir-senha",
-  limitarTentativas(),
-  asyncRoute(async (req, res) => {
-    const { email, novaSenha } = req.body;
-
-    if (!email || !novaSenha) {
-      return res.status(400).json({ error: "E-mail e nova senha são obrigatórios." });
-    }
-
     const usuario = await prisma.usuario.findFirst({
       where: { email: { equals: email, mode: "insensitive" } },
     });
@@ -261,17 +215,14 @@ router.post(
         return res.json({ message: "Se o e-mail estiver cadastrado, as instruções foram enviadas." });
       }
 
-      // 1. Gera um token criptográfico de 64 caracteres hexadecimais
       const token = crypto.randomBytes(32).toString("hex");
       const expira = new Date(Date.now() + 3600000); // Validade de 1 hora
 
-      // 2. Salva o token e a validade no banco de dados do usuário
       await prisma.usuario.update({
         where: { id: usuario.id },
         data: { senhaResetToken: token, senhaResetExpira: expira },
       });
 
-      // 3. Monta o link com a cerquilha (#token=...) exigida pelo novo frontend
       const linkRecuperacao = `${config.loja}/admin/redefinir-senha#token=${token}`;
       const textoMensagem = `Olá, ${usuario.nome}.\n\nVocê solicitou a recuperação de senha para o painel administrativo da Charme Modas.\n\nAcesse o link abaixo para continuar:\n${linkRecuperacao}\n\nSe você não solicitou isso, ignore este e-mail.`;
 
@@ -286,7 +237,6 @@ router.post(
   })
 );
 
-// Rota 2: Valida o token e salva a nova senha no banco
 router.post(
   "/redefinir-senha",
   limitarTentativas(),
@@ -297,7 +247,7 @@ router.post(
       return res.status(400).json({ error: "Token e nova senha são obrigatórios." });
     }
 
-    // Busca o usuário que tem esse token e verifica se ainda não expirou
+    // Busca usuário pelo token E verifica se não está expirado
     const usuario = await prisma.usuario.findFirst({
       where: {
         senhaResetToken: token,
@@ -309,10 +259,9 @@ router.post(
       return res.status(400).json({ error: "Link inválido ou expirado. Solicite uma nova recuperação." });
     }
 
-    // Gera o hash da nova senha
     const senhaHash = await gerarSenhaHash(senha);
 
-    // Atualiza a senha e limpa os campos de token para não ser reutilizado
+    // Atualiza a senha e limpa o token
     await prisma.usuario.update({
       where: { id: usuario.id },
       data: {
