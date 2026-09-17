@@ -13,6 +13,8 @@ import authRouter from "./routes/auth.js";
 
 export const app = express();
 
+app.set('trust proxy', 1);
+
 app.use("/auth", authRouter);
 app.use(cors());
 app.use(express.json());
