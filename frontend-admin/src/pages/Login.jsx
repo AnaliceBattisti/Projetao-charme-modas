@@ -1,15 +1,34 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { login } from "../auth.js";
+import { useSessao } from "../auth.jsx";
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
+  const [erro, setErro] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const { entrar, autenticado, carregando } = useSessao();
   const navigate = useNavigate();
 
-  function handleSubmit(e) {
+  // Quem já tem sessão aberta não precisa ver a tela de login de novo.
+  useEffect(() => {
+    if (!carregando && autenticado) navigate("/", { replace: true });
+  }, [carregando, autenticado, navigate]);
+
+  async function handleSubmit(e) {
     e.preventDefault();
-    login();
-    navigate("/", { replace: true });
+    if (enviando) return;
+    setEnviando(true);
+    setErro("");
+    try {
+      await entrar(email.trim(), senha);
+      navigate("/", { replace: true });
+    } catch (err) {
+      setErro(err.message);
+    } finally {
+      setEnviando(false);
+    }
   }
 
   return (
@@ -34,8 +53,12 @@ export default function Login() {
             <input
               id="login-email"
               className="cm-input"
-              type="text"
+              type="email"
+              autoComplete="username"
               placeholder="admin@charmemodas.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
             />
 
             <div className="cm-label-row">
@@ -51,7 +74,11 @@ export default function Login() {
                 id="login-password"
                 className="cm-input"
                 type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
                 placeholder="••••••"
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                required
               />
               <button
                 type="button"
@@ -63,8 +90,10 @@ export default function Login() {
               </button>
             </div>
 
-            <button className="cm-button" type="submit">
-              Entrar →
+            {erro && <p className="cm-error" role="alert">{erro}</p>}
+
+            <button className="cm-button" type="submit" disabled={enviando}>
+              {enviando ? "Entrando..." : "Entrar →"}
             </button>
           </form>
 

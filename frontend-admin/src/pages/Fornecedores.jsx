@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api.js";
-import { IconPlus, IconSearch, IconTrash } from "../icons.jsx";
+import { IconPlus, IconSearch, IconTrash, IconPencil } from "../icons.jsx";
 import Modal from "../components/Modal.jsx";
+import { formatCnpj, somenteDigitos } from "../format.js";
 
 const emptyForm = {
   nomeRazaoSocial: "",
@@ -12,21 +13,14 @@ const emptyForm = {
   email: "",
 };
 
-function formatCnpj(value) {
-  const digits = value.replace(/\D/g, "").slice(0, 14);
-  if (digits.length > 12) return digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2})/, "$1.$2.$3/$4-$5");
-  if (digits.length > 8) return digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{0,4})/, "$1.$2.$3/$4");
-  if (digits.length > 5) return digits.replace(/^(\d{2})(\d{3})(\d{0,3})/, "$1.$2.$3");
-  if (digits.length > 2) return digits.replace(/^(\d{2})(\d{0,3})/, "$1.$2");
-  return digits;
-}
-
 export default function Fornecedores() {
   const [fornecedores, setFornecedores] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  // id do fornecedor sendo editado; null = cadastrando um novo
+  const [editandoId, setEditandoId] = useState(null);
   const [busca, setBusca] = useState("");
 
   function loadFornecedores() {
@@ -40,13 +34,40 @@ export default function Fornecedores() {
 
   useEffect(loadFornecedores, []);
 
+  function abrirNovo() {
+    setEditandoId(null);
+    setForm(emptyForm);
+    setShowForm(true);
+  }
+
+  function abrirEdicao(fornecedor) {
+    setEditandoId(fornecedor.id);
+    setForm({
+      nomeRazaoSocial: fornecedor.nomeRazaoSocial || "",
+      cnpj: formatCnpj(fornecedor.cnpj || ""),
+      localizacao: fornecedor.localizacao || "",
+      categoria: fornecedor.categoria || "",
+      telefone: fornecedor.telefone || "",
+      email: fornecedor.email || "",
+    });
+    setShowForm(true);
+  }
+
+  function fecharForm() {
+    setShowForm(false);
+    setEditandoId(null);
+    setForm(emptyForm);
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
+    // O CNPJ sai daqui sem máscara: o banco guarda só dígitos.
+    const dados = { ...form, cnpj: somenteDigitos(form.cnpj) };
     try {
-      await api.post("/fornecedores", form);
-      setForm(emptyForm);
-      setShowForm(false);
+      if (editandoId) await api.put(`/fornecedores/${editandoId}`, dados);
+      else await api.post("/fornecedores", dados);
+      fecharForm();
       loadFornecedores();
     } catch (err) {
       setError(err.message);
@@ -66,10 +87,12 @@ export default function Fornecedores() {
   const fornecedoresFiltrados = useMemo(() => {
     const termo = busca.trim().toLowerCase();
     if (!termo) return fornecedores;
+    // Busca por CNPJ compara só os dígitos, então tanto faz digitar com ou sem máscara.
+    const digitos = somenteDigitos(termo);
     return fornecedores.filter(
       (f) =>
         f.nomeRazaoSocial.toLowerCase().includes(termo) ||
-        f.cnpj.toLowerCase().includes(termo)
+        (digitos && somenteDigitos(f.cnpj).includes(digitos))
     );
   }, [fornecedores, busca]);
 
@@ -89,7 +112,7 @@ export default function Fornecedores() {
               onChange={(e) => setBusca(e.target.value)}
             />
           </div>
-          <button className="cm-button-pill" onClick={() => setShowForm(true)}>
+          <button className="cm-button-pill" onClick={abrirNovo}>
             <IconPlus width={14} height={14} />
             Novo fornecedor
           </button>
@@ -98,7 +121,7 @@ export default function Fornecedores() {
 
       {error && <p className="cm-error">{error}</p>}
 
-      <Modal open={showForm} onClose={() => setShowForm(false)} title="Novo fornecedor">
+      <Modal open={showForm} onClose={fecharForm} title={editandoId ? "Editar fornecedor" : "Novo fornecedor"}>
         <form className="cm-inline-form" onSubmit={handleSubmit}>
           <input
             className="cm-input"
@@ -141,7 +164,7 @@ export default function Fornecedores() {
             onChange={(e) => setForm({ ...form, email: e.target.value })}
           />
           <button className="cm-button-pill" type="submit">
-            Adicionar
+            {editandoId ? "Salvar alterações" : "Adicionar"}
           </button>
         </form>
       </Modal>
@@ -167,11 +190,15 @@ export default function Fornecedores() {
               {fornecedoresFiltrados.map((f) => (
                 <tr key={f.id}>
                   <td>{f.nomeRazaoSocial}</td>
-                  <td>{f.cnpj}</td>
+                  <td>{formatCnpj(f.cnpj) || "—"}</td>
                   <td>{f.localizacao || "—"}</td>
                   <td>{f.categoria || "—"}</td>
                   <td>{f._count?.produtos ?? 0}</td>
-                  <td>
+                  <td className="cm-acoes-linha">
+                    <button className="cm-link-button" onClick={() => abrirEdicao(f)}>
+                      <IconPencil width={14} height={14} />
+                      Editar
+                    </button>
                     <button className="cm-link-button" onClick={() => handleDelete(f.id)}>
                       <IconTrash width={14} height={14} />
                       Remover

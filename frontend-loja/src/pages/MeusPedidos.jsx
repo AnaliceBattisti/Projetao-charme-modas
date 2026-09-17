@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 import TituloPagina from "../components/ui/TituloPagina.jsx";
 import { request, imagemUrl } from "../api.js";
+import { linkWhatsApp, mensagemPedido } from "../data/loja.js";
 import { formatarPreco } from "../format.js";
 import "../styles/pedidos.css";
 
@@ -122,7 +123,11 @@ function DetalhesPedido({ pedido }) {
       <p className="cm-pedido-explicacao">{cancelado ? "A solicitação foi encerrada pela loja."
         : aguardando ? "A equipe vai conferir a disponibilidade das peças e combinar a entrega ou retirada com você."
           : "Para acompanhar a entrega ou combinar a retirada, fale com a loja e informe o número do pedido."}</p>
-      <Link className="cm-botao cm-botao-bloco" to="/contato">Falar com a loja</Link>
+      {/* Abre a conversa já com o número do pedido escrito: a cliente não precisa
+          procurar o número nem explicar de onde veio. */}
+      {linkWhatsApp(mensagemPedido(pedido.id))
+        ? <a className="cm-botao cm-botao-bloco" href={linkWhatsApp(mensagemPedido(pedido.id))} target="_blank" rel="noreferrer">Falar com a loja no WhatsApp</a>
+        : <Link className="cm-botao cm-botao-bloco" to="/contato">Falar com a loja</Link>}
     </aside>
   </div>;
 }

@@ -1,18 +1,28 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import ProdutoCard from "../components/ProdutoCard.jsx";
 import { categoriasDe, coresDe, ehNovidade, tamanhosDe, useProdutos } from "../produtos.js";
+import { corEhClara, corHex } from "../cores.js";
 import { formatarPreco } from "../format.js";
+
+// Todo filtro mora na URL: o botão voltar funciona e dá pra mandar o link pronto.
+function numeroOuNulo(valor) {
+  const numero = Number(String(valor).replace(",", "."));
+  return valor && !Number.isNaN(numero) ? numero : null;
+}
 
 export default function Catalogo() {
   const { produtos, carregando, erro } = useProdutos();
   const [parametros, setParametros] = useSearchParams();
-  const [tamanho, setTamanho] = useState(null);
-  const [cor, setCor] = useState(null);
 
   const categoriaDaUrl = parametros.get("categoria");
   const buscaDaUrl = (parametros.get("busca") ?? "").trim();
   const soNovidades = parametros.get("novidades") === "1";
+  const tamanho = parametros.get("tamanho");
+  const cor = parametros.get("cor");
+  const precoMin = parametros.get("precoMin") ?? "";
+  const precoMax = parametros.get("precoMax") ?? "";
+
   const categorias = categoriasDe(produtos);
   const tamanhos = tamanhosDe(produtos);
   const cores = coresDe(produtos);
@@ -24,12 +34,29 @@ export default function Catalogo() {
 
   const filtrados = useMemo(() => {
     const termo = buscaDaUrl.toLowerCase();
-    const lista = produtos.filter((produto) => {
+    const min = numeroOuNulo(precoMin);
+    const max = numeroOuNulo(precoMax);
+
+    return produtos.filter((produto) => {
       if (categoriaDaUrl && produto.categoria !== categoriaDaUrl) return false;
-      if (tamanho && !produto.variacoes.some((v) => (v.grades ?? []).some((g) => g.tamanho === tamanho)))
-        return false;
-      if (cor && !produto.variacoes.some((v) => v.cor === cor)) return false;
+
+      // Cor e tamanho precisam existir na MESMA variação: o tamanho mora dentro
+      // da cor, então "Verde + G" só vale se houver grade G na cor verde.
+      if (cor || tamanho) {
+        const combina = produto.variacoes.some((v) => {
+          if (cor && v.cor !== cor) return false;
+          if (tamanho && !(v.grades ?? []).some((g) => g.tamanho === tamanho)) return false;
+          return true;
+        });
+        if (!combina) return false;
+      }
+
+      const preco = Number(produto.precoVenda);
+      if (min !== null && preco < min) return false;
+      if (max !== null && preco > max) return false;
+
       if (soNovidades && !ehNovidade(produto)) return false;
+
       if (termo) {
         const texto = [produto.nome, produto.marca, produto.categoria, produto.descricao]
           .filter(Boolean)
@@ -40,27 +67,26 @@ export default function Catalogo() {
       return true;
     });
     // A API já devolve do mais novo pro mais antigo; em Novidades isso é o que importa.
-    return lista;
-  }, [produtos, categoriaDaUrl, tamanho, cor, buscaDaUrl, soNovidades]);
+  }, [produtos, categoriaDaUrl, tamanho, cor, precoMin, precoMax, buscaDaUrl, soNovidades]);
 
-  function selecionarCategoria(valor) {
+  function definirParametro(nome, valor, { substituir = false } = {}) {
     const novos = new URLSearchParams(parametros);
-    if (valor) novos.set("categoria", valor);
-    else novos.delete("categoria");
-    setParametros(novos);
+    if (valor) novos.set(nome, valor);
+    else novos.delete(nome);
+    setParametros(novos, { replace: substituir });
   }
 
-  function removerParametro(nome) {
-    const novos = new URLSearchParams(parametros);
-    novos.delete(nome);
-    setParametros(novos);
+  // Clicar de novo na opção já escolhida desliga o filtro.
+  function alternarParametro(nome, valor, atual) {
+    definirParametro(nome, atual === valor ? null : valor);
   }
 
   function limparFiltros() {
-    setTamanho(null);
-    setCor(null);
     setParametros(new URLSearchParams());
   }
+
+  const temFiltro =
+    categoriaDaUrl || tamanho || cor || precoMin || precoMax || buscaDaUrl || soNovidades;
 
   return (
     <div className="cm-pagina">
@@ -78,7 +104,7 @@ export default function Catalogo() {
           {buscaDaUrl && (
             <span className="cm-chip">
               Buscando por “{buscaDaUrl}”
-              <button onClick={() => removerParametro("busca")} aria-label="Limpar busca">
+              <button onClick={() => definirParametro("busca", null)} aria-label="Limpar busca">
                 ×
               </button>
             </span>
@@ -86,7 +112,7 @@ export default function Catalogo() {
           {soNovidades && (
             <span className="cm-chip">
               Só novidades
-              <button onClick={() => removerParametro("novidades")} aria-label="Remover filtro">
+              <button onClick={() => definirParametro("novidades", null)} aria-label="Remover filtro">
                 ×
               </button>
             </span>
@@ -103,16 +129,18 @@ export default function Catalogo() {
             {categorias.length === 0 ? (
               <p className="cm-faixa-preco">Nenhuma categoria cadastrada.</p>
             ) : (
-              categorias.map((categoria) => (
-                <label key={categoria} className="cm-filtro-opcao">
-                  <input
-                    type="checkbox"
-                    checked={categoriaDaUrl === categoria}
-                    onChange={(e) => selecionarCategoria(e.target.checked ? categoria : null)}
-                  />
-                  {categoria}
-                </label>
-              ))
+              <div className="cm-tamanhos">
+                {categorias.map((valor) => (
+                  <button
+                    key={valor}
+                    className={"cm-pilula" + (categoriaDaUrl === valor ? " ativa" : "")}
+                    aria-pressed={categoriaDaUrl === valor}
+                    onClick={() => alternarParametro("categoria", valor, categoriaDaUrl)}
+                  >
+                    {valor}
+                  </button>
+                ))}
+              </div>
             )}
           </div>
 
@@ -124,7 +152,8 @@ export default function Catalogo() {
                   <button
                     key={valor}
                     className={"cm-pilula" + (tamanho === valor ? " ativa" : "")}
-                    onClick={() => setTamanho(tamanho === valor ? null : valor)}
+                    aria-pressed={tamanho === valor}
+                    onClick={() => alternarParametro("tamanho", valor, tamanho)}
                   >
                     {valor}
                   </button>
@@ -136,28 +165,66 @@ export default function Catalogo() {
           {cores.length > 0 && (
             <div className="cm-filtro-grupo">
               <h3>Cor</h3>
-              {cores.map((valor) => (
-                <label key={valor} className="cm-filtro-opcao">
-                  <input
-                    type="radio"
-                    name="cor"
-                    checked={cor === valor}
-                    onChange={() => setCor(valor)}
-                  />
-                  {valor}
-                </label>
-              ))}
+              <div className="cm-tamanhos">
+                {cores.map((valor) => {
+                  const hex = corHex(valor);
+                  return (
+                    <button
+                      key={valor}
+                      className={"cm-pilula cm-pilula-cor" + (cor === valor ? " ativa" : "")}
+                      aria-pressed={cor === valor}
+                      onClick={() => alternarParametro("cor", valor, cor)}
+                    >
+                      <span
+                        className={
+                          "cm-bolinha" +
+                          (hex ? (corEhClara(hex) ? " cm-bolinha-clara" : "") : " cm-bolinha-desconhecida")
+                        }
+                        style={hex ? { background: hex } : undefined}
+                      />
+                      {valor}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
 
           <div className="cm-filtro-grupo">
             <h3>Preço</h3>
+            <div className="cm-preco-campos">
+              <input
+                className="cm-preco-campo"
+                type="number"
+                min="0"
+                inputMode="decimal"
+                placeholder={`De ${faixa.min.toFixed(0)}`}
+                aria-label="Preço mínimo"
+                value={precoMin}
+                onChange={(e) => definirParametro("precoMin", e.target.value, { substituir: true })}
+              />
+              <span>—</span>
+              <input
+                className="cm-preco-campo"
+                type="number"
+                min="0"
+                inputMode="decimal"
+                placeholder={`Até ${faixa.max.toFixed(0)}`}
+                aria-label="Preço máximo"
+                value={precoMax}
+                onChange={(e) => definirParametro("precoMax", e.target.value, { substituir: true })}
+              />
+            </div>
             <p className="cm-faixa-preco">
-              {formatarPreco(faixa.min)} — {formatarPreco(faixa.max)}
+              A loja tem peças de {formatarPreco(faixa.min)} a {formatarPreco(faixa.max)}.
             </p>
           </div>
 
-          <button className="cm-botao-claro cm-botao-bloco" onClick={limparFiltros}>
+          <button
+            className="cm-botao-claro cm-botao-bloco"
+            onClick={limparFiltros}
+            disabled={!temFiltro}
+          >
             Limpar filtros
           </button>
         </aside>

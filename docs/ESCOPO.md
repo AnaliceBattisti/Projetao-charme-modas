@@ -23,9 +23,19 @@ Motivo: a parte de pagamento (integração tipo Stripe, ligar checkout ao estoqu
 
 ### Fora de escopo por enquanto (fica pra depois, se sobrar tempo)
 
-- Checkout público com pedidos reais e acompanhamento de pedidos pela conta
-- Recuperação de senha, verificação de e-mail e autenticação real do painel administrativo
-- Integração de pagamento online (ex.: Stripe)
+- Integração de pagamento online (ex.: Stripe). A loja não processa cartão, Pix nem
+  boleto: o pedido é enviado para a loja aprovar e o pagamento é combinado por fora.
+- Verificação de e-mail no cadastro
+
+### Limitações conhecidas (decididas, não esquecidas)
+
+- **Favoritos e carrinho vivem só no navegador** (`localStorage`), mesmo com a cliente
+  logada: trocar de celular ou limpar o navegador perde as duas listas. Resolver exigiria
+  uma tabela de favoritos e outra de itens de carrinho ligadas ao cliente, mais a mescla
+  no login. Ficou de fora por causa do prazo de entrega, não por esquecimento.
+- **O carrinho guarda o preço e o estoque de quando a peça foi adicionada.** Se a loja
+  mudar o preço, a cliente vê um total e o pedido é gravado com outro — o backend sempre
+  recalcula pelo preço atual do catálogo no momento do envio.
 
 ## Divisão de responsabilidades proposta pelo grupo
 

@@ -61,6 +61,26 @@ router.get("/", async (req, res) => {
   }
 });
 
+// Resumo leve dos pedidos que a loja virtual mandou e ainda ninguém analisou.
+// Fica antes de "/:id" de propósito, senão "pendentes" seria lido como um id.
+router.get("/pendentes", async (req, res) => {
+  const pedidos = await prisma.compra.findMany({
+    where: { status: "SOLICITADA" },
+    orderBy: { data: "asc" }, // o mais antigo primeiro: é quem está esperando há mais tempo
+    take: 20,
+    select: {
+      id: true,
+      data: true,
+      valorTotal: true,
+      formaPagamento: true,
+      cliente: { select: { id: true, nome: true } },
+      _count: { select: { itens: true } },
+    },
+  });
+  const total = await prisma.compra.count({ where: { status: "SOLICITADA" } });
+  res.json({ total, pedidos });
+});
+
 router.get("/:id", async (req, res) => {
   const compra = await prisma.compra.findUnique({
     where: { id: Number(req.params.id) },

@@ -32,27 +32,10 @@ export default function Favoritos() {
             ))}
           </div>
 
-          <section
-            style={{
-              background: "var(--blush)",
-              border: "1px solid var(--borda)",
-              borderRadius: 14,
-              padding: 28,
-              marginTop: 32,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 20,
-              flexWrap: "wrap",
-            }}
-          >
+          <section className="cm-chamada">
             <div>
-              <h2 className="cm-secao-titulo" style={{ marginBottom: 6 }}>
-                Quer encontrar mais peças?
-              </h2>
-              <p style={{ margin: 0, color: "var(--texto-suave)" }}>
-                Explore o catálogo completo e salve seus preferidos no coração.
-              </p>
+              <h2 className="cm-secao-titulo">Quer encontrar mais peças?</h2>
+              <p>Explore o catálogo completo e salve seus preferidos no coração.</p>
             </div>
             <Link to="/catalogo">
               <span className="cm-botao">Explorar catálogo</span>

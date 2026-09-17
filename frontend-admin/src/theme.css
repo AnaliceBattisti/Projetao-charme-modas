@@ -842,6 +842,44 @@ a {
   margin-bottom: 0;
 }
 
+/* Aviso de pedido novo: no menu lateral e nos cartões do dashboard. */
+.cm-nav-badge {
+  margin-left: auto;
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--cm-accent);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.cm-nav-link.active .cm-nav-badge {
+  background: #fff;
+  color: var(--cm-accent);
+}
+
+.cm-card-destaque {
+  border-color: var(--cm-accent);
+  box-shadow: 0 0 0 1px var(--cm-accent);
+}
+
+.cm-card-destaque strong {
+  color: var(--cm-accent);
+}
+
+.cm-card-aviso {
+  border-color: var(--cm-accent);
+}
+
+.cm-acoes-linha {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  white-space: nowrap;
+}
+
 .cm-input-minimo {
   width: 68px;
   margin-bottom: 0;
