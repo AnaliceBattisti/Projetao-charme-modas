@@ -20,6 +20,7 @@ import {
   ValidationError,
 } from "../validation/clientes.js";
 import { configuracaoEmail, enviarEmail, ConfiguracaoEmailError } from "../lib/email.js";
+import crypto from "crypto";
 
 const router = Router();
 const asyncRoute = (handler) => (req, res, next) =>
@@ -248,26 +249,80 @@ router.post(
       return res.status(400).json({ error: "E-mail e nova senha são obrigatórios." });
     }
 
-    if (novaSenha.length < 6) {
-      return res.status(400).json({ error: "A senha deve ter pelo menos 6 caracteres." });
-    }
-
     const usuario = await prisma.usuario.findFirst({
       where: { email: { equals: email, mode: "insensitive" } },
     });
 
-    if (!usuario || usuario.papel !== "ADMIN") {
-      return res.status(404).json({ error: "Usuário administrativo não encontrado." });
+    if (usuario) {
+      let config;
+      try {
+        config = configuracaoEmail();
+      } catch (err) {
+        return res.json({ message: "Se o e-mail estiver cadastrado, as instruções foram enviadas." });
+      }
+
+      // 1. Gera um token criptográfico de 64 caracteres hexadecimais
+      const token = crypto.randomBytes(32).toString("hex");
+      const expira = new Date(Date.now() + 3600000); // Validade de 1 hora
+
+      // 2. Salva o token e a validade no banco de dados do usuário
+      await prisma.usuario.update({
+        where: { id: usuario.id },
+        data: { senhaResetToken: token, senhaResetExpira: expira },
+      });
+
+      // 3. Monta o link com a cerquilha (#token=...) exigida pelo novo frontend
+      const linkRecuperacao = `${config.loja}/admin/redefinir-senha#token=${token}`;
+      const textoMensagem = `Olá, ${usuario.nome}.\n\nVocê solicitou a recuperação de senha para o painel administrativo da Charme Modas.\n\nAcesse o link abaixo para continuar:\n${linkRecuperacao}\n\nSe você não solicitou isso, ignore este e-mail.`;
+
+      enviarEmail(config, usuario.email, "Redefinição de Senha - Charme Modas", textoMensagem).catch(err => {
+        console.error("Erro ao disparar e-mail de recuperação:", err);
+      });
+    }
+    
+    return res.json({ 
+      message: "Se o e-mail estiver cadastrado, as instruções foram enviadas." 
+    });
+  })
+);
+
+// Rota 2: Valida o token e salva a nova senha no banco
+router.post(
+  "/redefinir-senha",
+  limitarTentativas(),
+  asyncRoute(async (req, res) => {
+    const { token, senha } = req.body;
+
+    if (!token || !senha) {
+      return res.status(400).json({ error: "Token e nova senha são obrigatórios." });
     }
 
-    const senhaHash = await gerarSenhaHash(novaSenha);
-
-    await prisma.usuario.update({
-      where: { id: usuario.id },
-      data: { senhaHash },
+    // Busca o usuário que tem esse token e verifica se ainda não expirou
+    const usuario = await prisma.usuario.findFirst({
+      where: {
+        senhaResetToken: token,
+        senhaResetExpira: { gte: new Date() },
+      },
     });
 
-    res.json({ message: "Senha redefinida com sucesso!" });
+    if (!usuario) {
+      return res.status(400).json({ error: "Link inválido ou expirado. Solicite uma nova recuperação." });
+    }
+
+    // Gera o hash da nova senha
+    const senhaHash = await gerarSenhaHash(senha);
+
+    // Atualiza a senha e limpa os campos de token para não ser reutilizado
+    await prisma.usuario.update({
+      where: { id: usuario.id },
+      data: {
+        senhaHash,
+        senhaResetToken: null,
+        senhaResetExpira: null,
+      },
+    });
+
+    res.json({ mensagem: "Senha redefinida com sucesso!" });
   })
 );
 
