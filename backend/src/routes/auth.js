@@ -191,6 +191,52 @@ router.post(
   }),
 );
 
+router.post(
+  "/recuperar-senha",
+  limitarTentativas(),
+  asyncRoute(async (req, res) => {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: "E-mail obrigatório." });
+    }
+
+    // Busca o usuário no banco (opcionalmente validando se é admin ou cliente)
+    const usuario = await prisma.usuario.findFirst({
+      where: { email: { equals: email, mode: "insensitive" } },
+    });
+
+    if (usuario) {
+      // Monta o link utilizando a URL da loja configurada no ambiente
+      let config;
+      try {
+        config = configuracaoEmail();
+      } catch (err) {
+        if (err instanceof ConfiguracaoEmailError) {
+          console.error("Configuração de e-mail inválida ou ausente no ambiente.");
+        }
+        // Mesmo se o e-mail não estiver configurado no servidor, 
+        // fingimos sucesso para o usuário por segurança
+        return res.json({ 
+          message: "Se o e-mail estiver cadastrado, as instruções foram enviadas." 
+        });
+      }
+
+      const linkRecuperacao = `${config.loja}/admin/redefinir-senha?email=${encodeURIComponent(email)}`;
+      const textoMensagem = `Olá, ${usuario.nome}.\n\nVocê solicitou a recuperação de senha para o painel administrativo da Charme Modas.\n\nAcesse o link abaixo para continuar:\n${linkRecuperacao}\n\nSe você não solicitou isso, ignore este e-mail.`;
+
+      // Dispara o e-mail em segundo plano usando a função existente
+      enviarEmail(config, usuario.email, "Redefinição de Senha - Charme Modas", textoMensagem).catch(err => {
+        console.error("Erro ao disparar e-mail de recuperação:", err);
+      });
+    }
+    
+    return res.json({ 
+      message: "Se o e-mail estiver cadastrado, as instruções foram enviadas." 
+    });
+  })
+);
+
 // Toda operação da própria conta usa o vínculo da sessão, nunca um ID enviado pelo cliente.
 router.use("/me", exigirConta);
 router.get("/me", (req, res) => res.json({ usuario: req.usuario }));
