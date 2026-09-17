@@ -5,8 +5,9 @@ export default function RecuperarSenha() {
   const [email, setEmail] = useState("");
   const [mensagem, setMensagem] = useState("");
   const [erro, setErro] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     setErro("");
     setMensagem("");
@@ -15,9 +16,28 @@ export default function RecuperarSenha() {
       return setErro("Por favor, preencha o e-mail cadastrado.");
     }
 
-    // Aqui entrará a integração com a rota do backend futuramente
+    setLoading(true);
+  try {
+    // Ajuste o caminho da URL caso sua rota no backend seja diferente
+    const response = await fetch("/api/auth/recuperar-senha", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Ocorreu um erro ao solicitar a recuperação.");
+    }
+
     setMensagem("Se o e-mail estiver correto, você receberá um link de recuperação em breve.");
+  } catch (err) {
+    setErro(err.message);
+  } finally {
+    setLoading(false);
   }
+}
 
   return (
     <div className="cm-login-split">
@@ -45,13 +65,18 @@ export default function RecuperarSenha() {
               placeholder="admin@charmemodas.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
             />
 
             {erro && <p style={{ color: "red", fontSize: "14px", marginTop: "10px" }}>{erro}</p>}
             {mensagem && <p style={{ color: "green", fontSize: "14px", marginTop: "10px" }}>{mensagem}</p>}
 
-            <button className="cm-button" type="submit" style={{ marginTop: "20px" }}>
-              Enviar instruções →
+            <button className="cm-button"
+            type="submit"
+            style={{ marginTop: "20px" }}
+            disabled={loading}
+            >
+              {loading ? "Enviando..." : "Enviar instruções →"}
             </button>
           </form>
 
