@@ -8,8 +8,6 @@ export default function Login() {
   const [erro, setErro] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  // const [enviando, setEnviando] = useState(false);
-  // const { entrar, autenticado, carregando } = useSessao();
   const navigate = useNavigate();
 
   async function handleSubmit(e) {
@@ -40,7 +38,6 @@ export default function Login() {
       setErro(err.message);
     } finally {
       setLoading(false);
-      // setEnviando(false);
     }
   }
 
@@ -67,7 +64,6 @@ export default function Login() {
               id="login-email"
               className="cm-input"
               type="text"
-              // autoComplete="username"
               placeholder="admin@charmemodas.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -87,7 +83,6 @@ export default function Login() {
                 id="login-password"
                 className="cm-input"
                 type={showPassword ? "text" : "password"}
-                // autoComplete="current-password"
                 placeholder="••••••"
                 value={senha}
                 onChange={(e) => setSenha(e.target.value)}

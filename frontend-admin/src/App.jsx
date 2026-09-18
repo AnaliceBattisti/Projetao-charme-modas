@@ -14,7 +14,6 @@ import ContasReceber from "./pages/ContasReceber.jsx";
 import NovaCompra from "./pages/NovaCompra.jsx";
 import RecuperarSenha from "./pages/RecuperarSenha.jsx";
 import RedefinirSenha from "./pages/RedefinirSenha.jsx";
-import Funcionarios from "./pages/Funcionarios.jsx";
 
 export default function App() {
   return (
@@ -39,14 +38,6 @@ export default function App() {
           <Route path="/contas-receber" element={<ContasReceber />} />
           <Route path="/compras" element={<Compras />} />
           <Route path="/compras/nova-compra" element={<NovaCompra />} />
-          <Route
-            path="/funcionarios"
-            element={
-              <RequireAuth somenteAdmin>
-                <Funcionarios />
-              </RequireAuth>
-            }
-          />
           <Route path="/configuracoes" element={<Configuracoes />} />
         </Route>
       </Routes>
