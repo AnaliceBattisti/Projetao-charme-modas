@@ -7,7 +7,7 @@ const opcoesCookie = () => ({
   httpOnly: true,
   sameSite: "lax",
   secure: process.env.NODE_ENV === "production",
-  path: "/auth",
+  path: "/",
 });
 const hashToken = (token) => createHash("sha256").update(token).digest("hex");
 
@@ -87,5 +87,25 @@ export async function usuarioDaSessao(req) {
     !sessao.usuario.cliente
   )
     return null;
+  return sessao.usuario;
+}
+
+export async function adminDaSessao(req) {
+  const token = tokenDaRequisicao(req);
+  if (!token) return null;
+  
+  const sessao = await prisma.sessaoUsuario.findUnique({
+    where: { tokenHash: hashToken(token) },
+    select: { expiraEm: true, usuario: { select: selecionarUsuario } },
+  });
+  
+  if (
+    !sessao ||
+    sessao.expiraEm <= new Date() ||
+    sessao.usuario.papel !== "ADMIN"
+  ) {
+    return null;
+  }
+  
   return sessao.usuario;
 }

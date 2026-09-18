@@ -69,6 +69,7 @@ web_modules/
 .env
 .env.*
 !.env.example
+!.env.production
 
 # imagens enviadas via upload (fotos de produto)
 backend/uploads/*

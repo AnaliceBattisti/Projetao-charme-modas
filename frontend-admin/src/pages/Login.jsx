@@ -1,8 +1,12 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useSessao } from "../auth.jsx";
+import { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { login } from "../auth.js";
 
 export default function Login() {
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
+  const [erro, setErro] = useState("");
+  const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
@@ -11,22 +15,34 @@ export default function Login() {
   const { entrar, autenticado, carregando } = useSessao();
   const navigate = useNavigate();
 
-  // Quem já tem sessão aberta não precisa ver a tela de login de novo.
-  useEffect(() => {
-    if (!carregando && autenticado) navigate("/", { replace: true });
-  }, [carregando, autenticado, navigate]);
-
   async function handleSubmit(e) {
     e.preventDefault();
-    if (enviando) return;
-    setEnviando(true);
     setErro("");
+
+    if (!email || !senha) {
+      return setErro("Por favor, preencha o e-mail e a senha.");
+    }
+
+    setLoading(true);
     try {
-      await entrar(email.trim(), senha);
+      const response = await fetch("/api/auth/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, senha })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "E-mail ou senha inválidos.");
+      }
+
+      login(data.usuario); 
       navigate("/", { replace: true });
     } catch (err) {
       setErro(err.message);
     } finally {
+      setLoading(false);
       setEnviando(false);
     }
   }
@@ -58,16 +74,16 @@ export default function Login() {
               placeholder="admin@charmemodas.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              required
+              disabled={loading}
             />
 
             <div className="cm-label-row">
               <label className="cm-label" htmlFor="login-password">
                 Senha
               </label>
-              <a className="cm-link" href="#">
+              <Link className="cm-link" to="/recuperar-senha">
                 Esqueci minha senha
-              </a>
+              </Link>
             </div>
             <div className="cm-password-wrap">
               <input
@@ -78,7 +94,7 @@ export default function Login() {
                 placeholder="••••••"
                 value={senha}
                 onChange={(e) => setSenha(e.target.value)}
-                required
+                disabled={loading}
               />
               <button
                 type="button"
@@ -90,10 +106,8 @@ export default function Login() {
               </button>
             </div>
 
-            {erro && <p className="cm-error" role="alert">{erro}</p>}
-
-            <button className="cm-button" type="submit" disabled={enviando}>
-              {enviando ? "Entrando..." : "Entrar →"}
+            <button className="cm-button" type="submit" disabled={loading}>
+              {loading ? "Entrando..." : "Entrar →"}
             </button>
           </form>
 
