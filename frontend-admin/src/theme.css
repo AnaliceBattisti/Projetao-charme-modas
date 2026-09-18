@@ -217,6 +217,68 @@ a {
   font-size: 0.9rem;
 }
 
+.cm-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+  font-size: 0.85rem;
+}
+
+.cm-pagination-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cm-pagination-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--cm-border);
+  border-radius: 8px;
+  background: var(--cm-surface);
+  color: var(--cm-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cm-pagination-button:hover:not(:disabled) {
+  background: var(--cm-surface-alt);
+}
+
+.cm-pagination-button[aria-current="page"] {
+  border-color: var(--cm-accent);
+  background: var(--cm-accent);
+  color: #fff;
+}
+
+.cm-pagination-button[aria-current="page"]:hover:not(:disabled) {
+  background: var(--cm-accent-dark);
+}
+
+.cm-pagination-button:focus-visible {
+  outline: 2px solid var(--cm-accent);
+  outline-offset: 2px;
+}
+
+.cm-pagination-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cm-pagination-ellipsis {
+  padding: 0 4px;
+  color: var(--cm-text-muted);
+}
+
 .cm-produto-cell {
   display: flex;
   align-items: center;
