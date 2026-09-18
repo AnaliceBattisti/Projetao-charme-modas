@@ -12,13 +12,17 @@ import Compras from "./pages/Compras.jsx";
 import Configuracoes from "./pages/Configuracoes.jsx";
 import ContasReceber from "./pages/ContasReceber.jsx";
 import NovaCompra from "./pages/NovaCompra.jsx";
+import RecuperarSenha from "./pages/RecuperarSenha.jsx";
+import RedefinirSenha from "./pages/RedefinirSenha.jsx";
 import Funcionarios from "./pages/Funcionarios.jsx";
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/admin">
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/recuperar-senha" element={<RecuperarSenha />} />
+        <Route path="/redefinir-senha" element={<RedefinirSenha />} />
         <Route
           element={
             <RequireAuth>

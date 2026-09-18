@@ -19,6 +19,8 @@ import {
   validateId,
   ValidationError,
 } from "../validation/clientes.js";
+import { configuracaoEmail, enviarEmail, ConfiguracaoEmailError } from "../lib/email.js";
+import crypto from "crypto";
 
 const router = Router();
 const asyncRoute = (handler) => (req, res, next) =>
@@ -167,6 +169,112 @@ router.post(
   }),
 );
 
+router.post(
+  "/admin/login",
+  limitarTentativas(),
+  asyncRoute(async (req, res) => {
+    const { email, senha } = validarLogin(req.body);
+    
+    const usuario = await prisma.usuario.findFirst({
+      where: { email: { equals: email, mode: "insensitive" } },
+      select: { ...selecionarUsuario, senhaHash: true },
+    });
+    
+    const senhaCorreta = await verificarSenha(senha, usuario?.senhaHash);
+    
+    // Barra quem errar a senha ou não for ADMIN
+    if (!senhaCorreta || usuario?.papel !== "ADMIN") {
+      return res.status(401).json({ error: "E-mail ou senha inválidos, ou acesso negado." });
+    }
+    
+    await iniciarSessao(req, res, usuario.id);
+    const { senhaHash, ...dadosPublicos } = usuario;
+    res.json({ usuario: dadosPublicos });
+  }),
+);
+
+router.post(
+  "/admin/recuperar-senha",
+  limitarTentativas(),
+  asyncRoute(async (req, res) => {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: "E-mail obrigatório." });
+    }
+
+    const usuario = await prisma.usuario.findFirst({
+      where: { email: { equals: email, mode: "insensitive" } },
+    });
+
+    if (usuario) {
+      let config;
+      try {
+        config = configuracaoEmail();
+      } catch (err) {
+        return res.json({ message: "Se o e-mail estiver cadastrado, as instruções foram enviadas." });
+      }
+
+      const token = crypto.randomBytes(32).toString("hex");
+      const expira = new Date(Date.now() + 3600000); // Validade de 1 hora
+
+      await prisma.usuario.update({
+        where: { id: usuario.id },
+        data: { senhaResetToken: token, senhaResetExpira: expira },
+      });
+
+      const linkRecuperacao = `${config.loja}/admin/redefinir-senha#token=${token}`;
+      const textoMensagem = `Olá, ${usuario.nome}.\n\nVocê solicitou a recuperação de senha para o painel administrativo da Charme Modas.\n\nAcesse o link abaixo para continuar:\n${linkRecuperacao}\n\nSe você não solicitou isso, ignore este e-mail.`;
+
+      enviarEmail(config, usuario.email, "Redefinição de Senha - Charme Modas", textoMensagem).catch(err => {
+        console.error("Erro ao disparar e-mail de recuperação:", err);
+      });
+    }
+    
+    return res.json({ 
+      message: "Se o e-mail estiver cadastrado, as instruções foram enviadas." 
+    });
+  })
+);
+
+router.post(
+  "/admin/redefinir-senha",
+  limitarTentativas(),
+  asyncRoute(async (req, res) => {
+    const { token, senha } = req.body;
+
+    if (!token || !senha) {
+      return res.status(400).json({ error: "Token e nova senha são obrigatórios." });
+    }
+
+    // Busca usuário pelo token E verifica se não está expirado
+    const usuario = await prisma.usuario.findFirst({
+      where: {
+        senhaResetToken: token,
+        senhaResetExpira: { gte: new Date() },
+      },
+    });
+
+    if (!usuario) {
+      return res.status(400).json({ error: "Link inválido ou expirado. Solicite uma nova recuperação." });
+    }
+
+    const senhaHash = await gerarSenhaHash(senha);
+
+    // Atualiza a senha e limpa o token
+    await prisma.usuario.update({
+      where: { id: usuario.id },
+      data: {
+        senhaHash,
+        senhaResetToken: null,
+        senhaResetExpira: null,
+      },
+    });
+
+    res.json({ mensagem: "Senha redefinida com sucesso!" });
+  })
+);
+
 // Toda operação da própria conta usa o vínculo da sessão, nunca um ID enviado pelo cliente.
 router.use("/me", exigirConta);
 router.get("/me", (req, res) => res.json({ usuario: req.usuario }));
@@ -288,7 +396,7 @@ router.use((error, req, res, next) => {
       .status(404)
       .json({ error: "Cadastro ou endereço não encontrado." });
   // Não registrar corpo da requisição, credenciais ou argumentos de queries.
-  console.error("Falha no serviço de contas:", error.code || error.name);
+  console.error("Falha detalhada no backend:", error);
   res.status(500).json({
     error: "Não foi possível acessar o serviço de contas. Tente novamente.",
   });

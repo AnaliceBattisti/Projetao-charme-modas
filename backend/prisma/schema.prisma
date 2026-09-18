@@ -21,6 +21,8 @@ model Usuario {
   cliente   Cliente? @relation(fields: [clienteId], references: [id], onDelete: Restrict)
   sessoes   SessaoUsuario[]
   recuperacaoSenha RecuperacaoSenha?
+  senhaResetToken  String?   @unique
+  senhaResetExpira DateTime?
 }
 
 enum PapelUsuario {

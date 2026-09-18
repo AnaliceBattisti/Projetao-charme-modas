@@ -14,9 +14,9 @@ let tarefas = 0;
 export class RecuperacaoIndisponivelError extends Error {}
 
 // Não incluir e-mail, token, senha, corpo da mensagem ou erro SMTP nos logs.
-function registrarFalha() {
+function registrarFalha(erro) {
   console.error(
-    "Falha no envio de e-mail de recuperação. Verifique o serviço SMTP.",
+    "Falha no envio de e-mail de recuperação. Verifique o serviço SMTP.", erro
   );
 }
 
