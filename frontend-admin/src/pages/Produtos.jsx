@@ -3,7 +3,10 @@ import { Link } from "react-router-dom";
 import { api, BASE_URL } from "../api.js";
 import { IconPlus, IconSearch, IconChevronRight, IconTrash, IconImage } from "../icons.jsx";
 import Modal from "../components/Modal.jsx";
+import Paginacao from "../components/Paginacao.jsx";
 import { formatCurrencyInput, parseCurrencyInput } from "../format.js";
+
+const ITENS_POR_PAGINA = 10;
 
 const emptyForm = {
   fornecedorId: "",
@@ -40,6 +43,7 @@ export default function Produtos() {
   const [expandedId, setExpandedId] = useState(null);
   const [categoriaFiltro, setCategoriaFiltro] = useState("Todos");
   const [busca, setBusca] = useState("");
+  const [pagina, setPagina] = useState(1);
 
   function loadProdutos() {
     setLoading(true);
@@ -181,6 +185,12 @@ export default function Produtos() {
       return passaCategoria && passaBusca;
     });
   }, [produtos, categoriaFiltro, busca]);
+  const totalPaginas = Math.max(1, Math.ceil(produtosFiltrados.length / ITENS_POR_PAGINA));
+  const paginaAtual = Math.min(pagina, totalPaginas);
+  const produtosPaginados = produtosFiltrados.slice(
+    (paginaAtual - 1) * ITENS_POR_PAGINA,
+    paginaAtual * ITENS_POR_PAGINA
+  );
 
   return (
     <div>
@@ -198,7 +208,10 @@ export default function Produtos() {
             <input
               placeholder="Buscar por nome ou marca"
               value={busca}
-              onChange={(e) => setBusca(e.target.value)}
+              onChange={(e) => {
+                setBusca(e.target.value);
+                setPagina(1);
+              }}
             />
           </div>
           <button className="cm-button-pill" onClick={() => setShowForm(true)}>
@@ -289,7 +302,10 @@ export default function Produtos() {
       <div className="cm-filter-row">
         <button
           className={"cm-filter-pill" + (categoriaFiltro === "Todos" ? " active" : "")}
-          onClick={() => setCategoriaFiltro("Todos")}
+          onClick={() => {
+            setCategoriaFiltro("Todos");
+            setPagina(1);
+          }}
         >
           Todos
         </button>
@@ -297,7 +313,10 @@ export default function Produtos() {
           <button
             key={c}
             className={"cm-filter-pill" + (categoriaFiltro === c ? " active" : "")}
-            onClick={() => setCategoriaFiltro(c)}
+            onClick={() => {
+              setCategoriaFiltro(c);
+              setPagina(1);
+            }}
           >
             {c}
           </button>
@@ -321,7 +340,7 @@ export default function Produtos() {
               </tr>
             </thead>
             <tbody>
-              {produtosFiltrados.map((produto) => {
+              {produtosPaginados.map((produto) => {
                 const capa = produto.variacoes.find((v) => v.imagemUrl)?.imagemUrl;
                 const totalTamanhos = produto.variacoes.reduce((s, v) => s + v.grades.length, 0);
                 const isExpanded = expandedId === produto.id;
@@ -525,6 +544,15 @@ export default function Produtos() {
               })}
             </tbody>
           </table>
+        )}
+        {!loading && (
+          <Paginacao
+            pagina={paginaAtual}
+            totalItens={produtosFiltrados.length}
+            itensPorPagina={ITENS_POR_PAGINA}
+            onMudarPagina={setPagina}
+            label="Paginação de produtos"
+          />
         )}
       </div>
     </div>

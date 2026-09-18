@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { login } from "../auth.js";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useSessao } from "../auth.jsx";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -8,7 +8,14 @@ export default function Login() {
   const [erro, setErro] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const { entrar, autenticado, carregando } = useSessao();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!carregando && autenticado) {
+      navigate("/", { replace: true });
+    }
+  }, [autenticado, carregando, navigate]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -20,22 +27,10 @@ export default function Login() {
 
     setLoading(true);
     try {
-      const response = await fetch("/api/auth/admin/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, senha })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "E-mail ou senha inválidos.");
-      }
-
-      login(data.usuario); 
+      await entrar(email, senha);
       navigate("/", { replace: true });
     } catch (err) {
-      setErro(err.message);
+      setErro(err.message || "Não foi possível entrar.");
     } finally {
       setLoading(false);
     }
@@ -67,7 +62,7 @@ export default function Login() {
               placeholder="admin@charmemodas.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              disabled={loading}
+              disabled={loading || carregando}
             />
 
             <div className="cm-label-row">
@@ -78,6 +73,7 @@ export default function Login() {
                 Esqueci minha senha
               </Link>
             </div>
+
             <div className="cm-password-wrap">
               <input
                 id="login-password"
@@ -86,7 +82,7 @@ export default function Login() {
                 placeholder="••••••"
                 value={senha}
                 onChange={(e) => setSenha(e.target.value)}
-                disabled={loading}
+                disabled={loading || carregando}
               />
               <button
                 type="button"
@@ -98,8 +94,14 @@ export default function Login() {
               </button>
             </div>
 
-            <button className="cm-button" type="submit" disabled={loading}>
-              {loading ? "Entrando..." : "Entrar →"}
+            {erro && (
+              <p role="alert" style={{ color: "red", fontSize: "14px", marginTop: "10px" }}>
+                {erro}
+              </p>
+            )}
+
+            <button className="cm-button" type="submit" disabled={loading || carregando}>
+              {loading ? "Entrando..." : carregando ? "Carregando..." : "Entrar →"}
             </button>
           </form>
 

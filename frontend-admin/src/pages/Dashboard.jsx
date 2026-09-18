@@ -3,10 +3,14 @@ import { Link } from "react-router-dom";
 import { api } from "../api.js";
 import { situacao } from "../estoqueUtils.js";
 import { usePedidosPendentes } from "../pedidosPendentes.js";
+import Paginacao from "../components/Paginacao.jsx";
+
+const ALERTAS_POR_PAGINA = 10;
 
 export default function Dashboard() {
   const [produtos, setProdutos] = useState([]);
   const [variacoes, setVariacoes] = useState([]);
+  const [paginaAlertas, setPaginaAlertas] = useState(1);
   const [totalClientes, setTotalClientes] = useState(null);
   const [error, setError] = useState(null);
   const { total: pedidosPendentes, pedidos } = usePedidosPendentes();
@@ -26,6 +30,12 @@ export default function Dashboard() {
     0
   );
   const alertas = variacoes.filter((v) => situacao(v).label !== "Adequado");
+  const totalPaginasAlertas = Math.max(1, Math.ceil(alertas.length / ALERTAS_POR_PAGINA));
+  const paginaAtualAlertas = Math.min(paginaAlertas, totalPaginasAlertas);
+  const alertasPaginados = alertas.slice(
+    (paginaAtualAlertas - 1) * ALERTAS_POR_PAGINA,
+    paginaAtualAlertas * ALERTAS_POR_PAGINA
+  );
 
   const indicadores = [
     { label: "Pedidos aguardando", valor: pedidosPendentes, destaque: pedidosPendentes > 0 },
@@ -128,7 +138,7 @@ export default function Dashboard() {
         ) : (
           <table className="cm-table">
             <tbody>
-              {alertas.map((v) => {
+              {alertasPaginados.map((v) => {
                 const s = situacao(v);
                 return (
                   <tr key={v.id}>
@@ -152,6 +162,13 @@ export default function Dashboard() {
             </tbody>
           </table>
         )}
+        <Paginacao
+          pagina={paginaAtualAlertas}
+          totalItens={alertas.length}
+          itensPorPagina={ALERTAS_POR_PAGINA}
+          onMudarPagina={setPaginaAlertas}
+          label="Paginação dos alertas de estoque"
+        />
       </div>
     </div>
   );

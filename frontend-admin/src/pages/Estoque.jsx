@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { IconPlus } from "../icons.jsx";
 import { situacao } from "../estoqueUtils.js";
+import Paginacao from "../components/Paginacao.jsx";
 
+const ITENS_POR_PAGINA = 10;
 const emptyEntradaForm = { gradeId: "", quantidade: "", motivo: "" };
 const emptyAjusteForm = { gradeId: "", quantidade: "", motivo: "" };
 
@@ -15,6 +17,8 @@ const TIPO_BADGE = {
 export default function Estoque() {
   const [grades, setGrades] = useState([]);
   const [movimentacoes, setMovimentacoes] = useState([]);
+  const [paginaEstoque, setPaginaEstoque] = useState(1);
+  const [paginaMovimentacoes, setPaginaMovimentacoes] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [modo, setModo] = useState(null); // "entrada" | "ajuste" | null
@@ -27,6 +31,8 @@ export default function Estoque() {
       .then(([v, m]) => {
         setGrades(v);
         setMovimentacoes(m);
+        setPaginaEstoque((pagina) => Math.min(pagina, Math.max(1, Math.ceil(v.length / ITENS_POR_PAGINA))));
+        setPaginaMovimentacoes((pagina) => Math.min(pagina, Math.max(1, Math.ceil(m.length / ITENS_POR_PAGINA))));
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -46,6 +52,7 @@ export default function Estoque() {
       });
       setEntradaForm(emptyEntradaForm);
       setModo(null);
+      setPaginaMovimentacoes(1);
       loadAll();
     } catch (err) {
       setError(err.message);
@@ -64,6 +71,7 @@ export default function Estoque() {
       });
       setAjusteForm(emptyAjusteForm);
       setModo(null);
+      setPaginaMovimentacoes(1);
       loadAll();
     } catch (err) {
       setError(err.message);
@@ -105,6 +113,14 @@ export default function Estoque() {
   inicioMes.setDate(1);
   inicioMes.setHours(0, 0, 0, 0);
   const movimentacoesDoMes = movimentacoes.filter((m) => new Date(m.data) >= inicioMes).length;
+  const gradesPaginadas = grades.slice(
+    (paginaEstoque - 1) * ITENS_POR_PAGINA,
+    paginaEstoque * ITENS_POR_PAGINA
+  );
+  const movimentacoesPaginadas = movimentacoes.slice(
+    (paginaMovimentacoes - 1) * ITENS_POR_PAGINA,
+    paginaMovimentacoes * ITENS_POR_PAGINA
+  );
 
   return (
     <div>
@@ -261,7 +277,7 @@ export default function Estoque() {
               </tr>
             </thead>
             <tbody>
-              {grades.map((v) => {
+              {gradesPaginadas.map((v) => {
                 const s = situacao(v);
                 return (
                   <tr key={v.id}>
@@ -292,6 +308,15 @@ export default function Estoque() {
             </tbody>
           </table>
         )}
+        {!loading && (
+          <Paginacao
+            pagina={paginaEstoque}
+            totalItens={grades.length}
+            itensPorPagina={ITENS_POR_PAGINA}
+            onMudarPagina={setPaginaEstoque}
+            label="Paginação do estoque"
+          />
+        )}
       </div>
 
       <div className="cm-card">
@@ -310,7 +335,7 @@ export default function Estoque() {
               </tr>
             </thead>
             <tbody>
-              {movimentacoes.map((m) => (
+              {movimentacoesPaginadas.map((m) => (
                 <tr key={m.id}>
                   <td>{new Date(m.data).toLocaleDateString("pt-BR")}</td>
                   <td>
@@ -331,6 +356,14 @@ export default function Estoque() {
             </tbody>
           </table>
         )}
+        <Paginacao
+          pagina={paginaMovimentacoes}
+          totalItens={movimentacoes.length}
+          itensPorPagina={ITENS_POR_PAGINA}
+          onMudarPagina={setPaginaMovimentacoes}
+          label="Paginação das movimentações"
+          disabled={loading}
+        />
       </div>
     </div>
   );
