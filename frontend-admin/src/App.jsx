@@ -39,7 +39,14 @@ export default function App() {
           <Route path="/contas-receber" element={<ContasReceber />} />
           <Route path="/compras" element={<Compras />} />
           <Route path="/compras/nova-compra" element={<NovaCompra />} />
-          <Route path="/funcionarios" element={<Funcionarios />} />
+          <Route
+            path="/funcionarios"
+            element={
+              <RequireAuth somenteAdmin>
+                <Funcionarios />
+              </RequireAuth>
+            }
+          />
           <Route path="/configuracoes" element={<Configuracoes />} />
         </Route>
       </Routes>
