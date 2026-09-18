@@ -25,6 +25,7 @@ services:
       - PORT=3333
       - LOJA_ORIGENS=${LOJA_ORIGENS}
       - LOJA_URL=${LOJA_URL}
+      - PAINEL_ORIGENS=${PAINEL_ORIGENS}
       - EMAIL_FROM=${EMAIL_FROM}
       - SMTP_HOST=${SMTP_HOST}
       - SMTP_PORT=${SMTP_PORT}

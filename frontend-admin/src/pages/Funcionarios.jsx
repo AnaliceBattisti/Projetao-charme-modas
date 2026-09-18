@@ -184,7 +184,8 @@ export default function Funcionarios() {
                     </span>
                   </td>
                   <td>{new Date(f.criadoEm).toLocaleDateString("pt-BR")}</td>
-                  <td className="cm-acoes-linha">
+                <td>
+                  <div className="cm-acoes-linha">
                     <button className="cm-link-button" onClick={() => abrirEdicao(f)}>
                       <IconPencil width={14} height={14} />
                       Editar
@@ -198,7 +199,8 @@ export default function Funcionarios() {
                       <IconTrash width={14} height={14} />
                       Remover
                     </button>
-                  </td>
+                  </div>
+                </td>
                 </tr>
               ))}
             </tbody>
