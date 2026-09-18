@@ -2,6 +2,11 @@
 
 Projeto acadêmico para a loja Charme Modas (Garanhuns-PE): controle de estoque/backoffice e crediário via painel administrativo. E-commerce público e pagamento online ficam para depois, se sobrar tempo.
 
+## 🔗 Acesso
+
+- **Loja Virtual**: [https://projetao-grupo01.ufape.edu.br](https://projetao-grupo01.ufape.edu.br)
+- **Painel Admin**: [https://projetao-grupo01.ufape.edu.br/admin](https://projetao-grupo01.ufape.edu.br/admin)
+
 ## Stack
 
 - **Backend**: Node.js + Express + Prisma
@@ -11,24 +16,24 @@ Projeto acadêmico para a loja Charme Modas (Garanhuns-PE): controle de estoque/
 
 ## Estrutura
 
-```
-backend/          API Express + schema Prisma (traduzido do diagrama ER da equipe)
-frontend-admin/   Painel administrativo em React (Login, Dashboard, Produtos, Estoque,
-                   Fornecedores, Clientes, Crediário, Compras)
-frontend-loja/    E-commerce: catálogo integrado, produto, carrinho, favoritos,
-                   login, cadastro, conta e edição de dados e endereços
-docs/            Escopo, arquitetura e documentação dos módulos
+```text
+backend/             API Express + schema Prisma (traduzido do diagrama ER da equipe)
+frontend-admin/      Painel administrativo em React (Login, Dashboard, Produtos, Estoque,
+                     Fornecedores, Clientes, Crediário, Compras)
+frontend-loja/       E-commerce: catálogo integrado, produto, carrinho, favoritos,
+                     login, cadastro, conta e edição de dados e endereços
+docs/                Escopo, arquitetura e documentação dos módulos
 docker-compose.yml   Postgres local
 ```
 
 ## Como rodar
 
 1. Subir o banco:
-   ```
+   ```bash
    docker compose up -d
    ```
 2. Backend:
-   ```
+   ```bash
    cd backend
    npm install
    cp .env.example .env
@@ -37,8 +42,9 @@ docker-compose.yml   Postgres local
    npm run dev
    ```
    API sobe em `http://localhost:3333` (`GET /health` para checar).
+
 3. Painel admin:
-   ```
+   ```bash
    cd frontend-admin
    npm install
    npm run dev
@@ -46,7 +52,7 @@ docker-compose.yml   Postgres local
    Abre em `http://localhost:5173`.
 
 4. Loja virtual (em outro terminal; cadastro e login precisam do backend e do banco):
-   ```
+   ```bash
    cd frontend-loja
    npm ci
    npm run dev
@@ -54,7 +60,7 @@ docker-compose.yml   Postgres local
    Abre em `http://localhost:5174`.
 
    Para verificar a loja:
-   ```
+   ```bash
    npm run build
    ```
 
