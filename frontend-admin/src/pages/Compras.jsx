@@ -3,6 +3,9 @@ import { api } from "../api";
 import { IconPlus, IconSearch } from "../icons";
 import { useNavigate } from "react-router-dom";
 import Modal from "../components/Modal";
+import Paginacao from "../components/Paginacao.jsx";
+
+const ITENS_POR_PAGINA = 10;
 
 export default function Compras() {
   const [loading, setLoading] = useState(true);
@@ -10,6 +13,7 @@ export default function Compras() {
   const [busca, setBusca] = useState("");
   const [statusFiltro, setStatusFiltro] = useState("TODOS");
   const [compras, setCompras] = useState([]);
+  const [pagina, setPagina] = useState(1);
   const navigate = useNavigate();
 
   const [showModalDetalhes, setShowModalDetalhes] = useState(false);
@@ -134,6 +138,13 @@ export default function Compras() {
     }
   };
 
+  const totalPaginas = Math.max(1, Math.ceil(compras.length / ITENS_POR_PAGINA));
+  const paginaAtual = Math.min(pagina, totalPaginas);
+  const comprasPaginadas = compras.slice(
+    (paginaAtual - 1) * ITENS_POR_PAGINA,
+    paginaAtual * ITENS_POR_PAGINA
+  );
+
   return (
     <div>
       <div className="cm-page-header">
@@ -150,7 +161,10 @@ export default function Compras() {
               type="text"
               placeholder="Buscar por cliente ou CPF"
               value={busca}
-              onChange={(e) => setBusca(e.target.value)}
+              onChange={(e) => {
+                setBusca(e.target.value);
+                setPagina(1);
+              }}
             />
           </div>
           <button className="cm-button-pill" onClick={()=>{navigate('/compras/nova-compra')}}>
@@ -381,7 +395,10 @@ export default function Compras() {
               className={
                 "cm-filter-pill" + (statusFiltro === status ? " active" : "")
               }
-              onClick={() => setStatusFiltro(status)}
+              onClick={() => {
+                setStatusFiltro(status);
+                setPagina(1);
+              }}
             >
               {status === "TODOS" ? "Todas" : STATUS_TEXTO[status]}
             </button>
@@ -392,7 +409,9 @@ export default function Compras() {
       <div className="cm-card">
         <h2 className="cm-section-title">Histórico de Compras</h2>
 
-        {compras.length === 0 ? (
+        {loading ? (
+          <p>Carregando compras...</p>
+        ) : compras.length === 0 ? (
           <p>Nenhuma compra encontrada.</p>
         ) : (
           <table className="cm-table">
@@ -409,7 +428,7 @@ export default function Compras() {
               </tr>
             </thead>
             <tbody>
-              {compras.map((compra) => (
+              {comprasPaginadas.map((compra) => (
                 <tr key={compra.id}>
                   <td>
                     <strong>#{compra.id}</strong>
@@ -462,6 +481,15 @@ export default function Compras() {
               ))}
             </tbody>
           </table>
+        )}
+        {!loading && !errorFetch && (
+          <Paginacao
+            pagina={paginaAtual}
+            totalItens={compras.length}
+            itensPorPagina={ITENS_POR_PAGINA}
+            onMudarPagina={setPagina}
+            label="Paginação de compras"
+          />
         )}
       </div>
     </div>
