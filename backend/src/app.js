@@ -20,10 +20,6 @@ export const app = express();
 
 app.set('trust proxy', 1);
 
-app.use(cors({
-  origin: true,
-  credentials: true
-}));
 // /auth e /painel precisam vir antes do cors() genérico: o pacote cors responde
 // e encerra o OPTIONS de preflight sozinho, sem chamar next(). Se o cors() aberto
 // (Allow-Origin: *) rodasse primeiro, ele responderia ao preflight de login antes
@@ -31,11 +27,15 @@ app.use(cors({
 // wildcard combinado com credentials: "include" ("Failed to fetch").
 app.use("/auth", authRouter);
 app.use("/painel", painelRouter);
-app.use(cors());
+//app.use(cors());
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
 app.use(express.json());
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
-app.use("/auth", authRouter);
+//app.use("/auth", authRouter);
 app.use("/fornecedores", fornecedoresRouter);
 app.use("/produtos", produtosRouter);
 app.use("/estoque", estoqueRouter);
