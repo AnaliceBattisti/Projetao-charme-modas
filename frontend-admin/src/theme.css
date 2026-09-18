@@ -217,6 +217,15 @@ a {
   font-size: 0.9rem;
 }
 
+.cm-estoque-table-area {
+  overflow: auto;
+}
+
+.cm-estoque-table-area-fixed {
+  height: calc(2.5rem + var(--cm-page-size) * var(--cm-page-row-height, 3rem));
+  scrollbar-gutter: stable;
+}
+
 .cm-pagination {
   display: flex;
   align-items: center;

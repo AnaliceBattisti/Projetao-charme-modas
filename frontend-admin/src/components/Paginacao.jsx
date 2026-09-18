@@ -13,8 +13,11 @@ export default function Paginacao({
   const totalPaginas = Math.ceil(totalItens / itensPorPagina);
   const primeiroItem = (pagina - 1) * itensPorPagina + 1;
   const ultimoItem = Math.min(pagina * itensPorPagina, totalItens);
-  const inicio = Math.max(1, Math.min(pagina - 1, totalPaginas - 2));
-  const fim = Math.min(totalPaginas, inicio + 2);
+  // Blocos de três páginas, com atalhos para a primeira e a última.
+  const inicio = totalPaginas <= 5
+    ? 1
+    : Math.min(Math.floor((pagina - 1) / 3) * 3 + 1, totalPaginas - 2);
+  const fim = totalPaginas <= 5 ? totalPaginas : Math.min(totalPaginas, inicio + 2);
   const numerosVisiveis = new Set([1, totalPaginas]);
 
   for (let numero = inicio; numero <= fim; numero += 1) {
@@ -25,8 +28,7 @@ export default function Paginacao({
   const numerosOrdenados = [...numerosVisiveis].sort((a, b) => a - b);
   numerosOrdenados.forEach((numero, indice) => {
     const anterior = numerosOrdenados[indice - 1];
-    if (numero - anterior === 2) paginas.push(anterior + 1);
-    else if (numero - anterior > 2) paginas.push(`reticencias-${numero}`);
+    if (numero - anterior > 1) paginas.push(`reticencias-${numero}`);
     paginas.push(numero);
   });
 

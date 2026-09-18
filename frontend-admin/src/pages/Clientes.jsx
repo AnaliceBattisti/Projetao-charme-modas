@@ -2,12 +2,13 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
 import { IconPlus, IconTrash } from "../icons.jsx";
 import Modal from "../components/Modal.jsx";
+import Paginacao from "../components/Paginacao.jsx";
 import {
   emptyCliente, emptyEndereco, estados, formatCpf, formatCep, formatTelefone, formatTelefoneInput,
   moeda, data, mensagemErro, normalizarBusca, situacaoCredito, parcelaAtrasada, resumirCompras,
 } from "../clientesUtils.js";
 
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 10;
 const ESTADOS_CIVIS = ["Solteiro(a)", "Casado(a)", "Divorciado(a)", "Separado(a)", "Viúvo(a)", "União estável"];
 const FORM_GRID = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))", gap: "16px 20px" };
 const FIELDSET = { border: 0, padding: 0, margin: 0, minWidth: 0 };
@@ -240,7 +241,10 @@ export default function Clientes() {
           <div style={visual.empty}>
             <h2 className="cm-section-title">{busca ? "Nenhum cliente encontrado" : "Seu primeiro cliente começa aqui"}</h2>
             <p className="cm-text-muted">{busca ? "Tente buscar por outro nome, CPF ou telefone." : "Cadastre um cliente para acompanhar seus contatos, compras e crediário."}</p>
-            <button className="cm-button-outline" style={visual.outline} onClick={() => busca ? setBusca("") : abrir("create")}>
+            <button className="cm-button-outline" style={visual.outline} onClick={() => {
+              if (busca) { setBusca(""); setPage(1); }
+              else abrir("create");
+            }}>
               {busca ? "Limpar busca" : "Cadastrar primeiro cliente"}
             </button>
           </div>
@@ -265,15 +269,14 @@ export default function Clientes() {
               })}</tbody>
             </table>
             </div>
-            <footer className="cm-page-header" style={visual.footer}>
-              <span className="cm-text-muted" style={{ fontSize: 12 }} aria-live="polite">{filtrados.length} {filtrados.length === 1 ? "cliente" : "clientes"}{busca ? " encontrados" : " cadastrados"}</span>
-              {pages > 1 && (
-                <nav className="cm-page-actions" aria-label="Paginação de clientes">
-                  <button className="cm-button-outline" style={visual.outline} disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>Anterior</button>
-                  <span className="cm-text-muted">{currentPage} de {pages}</span>
-                  <button className="cm-button-outline" style={visual.outline} disabled={currentPage === pages} onClick={() => setPage(currentPage + 1)}>Próxima</button>
-                </nav>
-              )}
+            <footer style={visual.footer}>
+              <Paginacao
+                pagina={currentPage}
+                totalItens={filtrados.length}
+                itensPorPagina={PAGE_SIZE}
+                onMudarPagina={setPage}
+                label="Paginação de clientes"
+              />
             </footer>
           </>
         )}
