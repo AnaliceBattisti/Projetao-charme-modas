@@ -3,6 +3,11 @@ export const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3333";
 async function request(path, options, { rawBody = false } = {}) {
   const res = await fetch(`${BASE_URL}${path}`, {
     headers: rawBody ? undefined : { "Content-Type": "application/json" },
+    // O cookie de sessão do painel só existe em /painel, que responde com CORS
+    // configurado pra credenciais. As demais rotas usam cors() aberto (Allow-Origin: *),
+    // que o navegador recusa combinar com credentials: "include" — mandar em todas
+    // quebrava toda chamada fora de /painel com "Failed to fetch".
+    credentials: path.startsWith("/painel/") ? "include" : "omit",
     ...options,
   });
   if (!res.ok) {

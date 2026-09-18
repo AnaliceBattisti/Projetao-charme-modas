@@ -1,6 +1,25 @@
 import { PrismaClient, StatusCrediario, StatusCompra, StatusParcela } from '@prisma/client';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { gerarSenhaHash } from '../src/lib/senhas.js';
 
 const prisma = new PrismaClient();
+
+const aqui = path.dirname(fileURLToPath(import.meta.url));
+
+/**
+ * As fotos do seed ficam versionadas em prisma/seed-assets, porque uploads/ é
+ * ignorado pelo git. Aqui elas são copiadas para uploads/ com nome fixo, para
+ * todo mundo ver as mesmas imagens depois de rodar o seed.
+ */
+function publicarFoto(arquivo) {
+  const origem = path.join(aqui, 'seed-assets', arquivo);
+  const destino = path.join(process.cwd(), 'uploads', arquivo);
+  fs.mkdirSync(path.dirname(destino), { recursive: true });
+  fs.copyFileSync(origem, destino);
+  return `/uploads/${arquivo}`;
+}
 
 async function main() {
   console.log('🌱 Iniciando limpeza e povoamento do banco de dados...');
@@ -8,15 +27,18 @@ async function main() {
   // 1. Limpeza em ordem reversa de dependência (desabilita FKs no Postgres para segurança)
   await prisma.$executeRawUnsafe(`TRUNCATE TABLE "Parcela", "ItemCompra", "Compra", "Crediario", "EnderecoCliente", "Cliente", "MovimentacaoEstoque", "Grade", "Variacao", "Produto", "Fornecedor", "Usuario" RESTART IDENTITY CASCADE;`);
 
-  // 2. Criar Usuário Admin
+  // 2. Criar Usuário Admin — senha de verdade, para conseguir entrar no painel.
+  // Vale só em desenvolvimento: em produção a loja troca no primeiro acesso.
+  const senhaAdmin = process.env.SENHA_ADMIN_SEED || 'charme123';
   await prisma.usuario.create({
     data: {
       nome: 'Admin Loja',
-      email: 'admin@loja.com',
-      senhaHash: '$2b$10$YourHashedPasswordHere',
+      email: 'admin@charmemodas.com',
+      senhaHash: await gerarSenhaHash(senhaAdmin),
       papel: 'ADMIN',
     },
   });
+  console.log(`👤 Admin do painel: admin@charmemodas.com / ${senhaAdmin}`);
 
   // 3. Criar Fornecedor e Produto
   const fornecedor = await prisma.fornecedor.create({
@@ -49,8 +71,48 @@ async function main() {
     },
   });
 
+  // Camiseta com duas cores e foto em cada uma: é o que mostra a variação por cor
+  // funcionando na loja (trocar a cor troca a foto) e a cor esgotada riscada no card.
+  await prisma.produto.create({
+    data: {
+      fornecedorId: fornecedor.id,
+      nome: 'Camiseta Básica Gola V Masculina',
+      categoria: 'Masculino',
+      precoCusto: 40.0,
+      precoVenda: 70.0,
+      variacoes: {
+        create: [
+          {
+            cor: 'Branca',
+            imagemUrl: publicarFoto('camiseta-gola-v-branca.png'),
+            grades: {
+              create: [
+                { tamanho: 'P', sku: 'CAM-GOLAV-BR-P', estoqueAtual: 4 },
+                { tamanho: 'M', sku: 'CAM-GOLAV-BR-M', estoqueAtual: 5 },
+                { tamanho: 'G', sku: 'CAM-GOLAV-BR-G', estoqueAtual: 0 },
+              ],
+            },
+          },
+          {
+            // Sem estoque de propósito: a bolinha dessa cor aparece riscada na vitrine.
+            cor: 'Verde',
+            imagemUrl: publicarFoto('camiseta-gola-v-verde.png'),
+            grades: {
+              create: [
+                { tamanho: 'P', sku: 'CAM-GOLAV-VD-P', estoqueAtual: 0 },
+                { tamanho: 'M', sku: 'CAM-GOLAV-VD-M', estoqueAtual: 0 },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  });
+
   const variacao = await prisma.variacao.findFirstOrThrow({ where: { produtoId: produto.id } });
-  const grade = await prisma.grade.findFirstOrThrow({ where: { gradeId: grade.id, tamanho: '40' } });
+  const grade = await prisma.grade.findFirstOrThrow({
+    where: { variacaoId: variacao.id, tamanho: '40' },
+  });
 
   // Datas de referência dinâmicas (com base em hoje)
   const hoje = new Date();

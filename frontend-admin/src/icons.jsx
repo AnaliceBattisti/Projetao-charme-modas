@@ -138,6 +138,15 @@ export function IconImage(props) {
   );
 }
 
+export function IconPencil(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 20h4L19 9a2 2 0 0 0-2.8-2.8L5 17.2z" />
+      <path d="m14.5 5.5 4 4" />
+    </svg>
+  );
+}
+
 export function IconChevronRight(props) {
   return (
     <svg {...base} {...props}>

@@ -61,11 +61,33 @@ export function categoriasDe(produtos) {
   return [...new Set(produtos.map((p) => p.categoria).filter(Boolean))].sort();
 }
 
+// Ordem de vitrine, não alfabética: P vem antes de M, que vem antes de G.
+const ORDEM_TAMANHOS = ["PP", "P", "M", "G", "GG", "XG", "XGG", "U", "UNICO", "ÚNICO"];
+
+function posicao(tamanho) {
+  const normal = tamanho.trim().toUpperCase();
+  const conhecido = ORDEM_TAMANHOS.indexOf(normal);
+  if (conhecido >= 0) return [0, conhecido, normal];
+  // Numéricos (36, 38, 40...) vêm depois das letras, em ordem numérica.
+  if (/^\d+$/.test(normal)) return [1, Number(normal), normal];
+  return [2, 0, normal];
+}
+
+export function ordenarTamanhos(tamanhos) {
+  return [...tamanhos].sort((a, b) => {
+    const [grupoA, valorA, textoA] = posicao(a);
+    const [grupoB, valorB, textoB] = posicao(b);
+    if (grupoA !== grupoB) return grupoA - grupoB;
+    if (valorA !== valorB) return valorA - valorB;
+    return textoA.localeCompare(textoB);
+  });
+}
+
 export function tamanhosDe(produtos) {
   const tamanhos = produtos.flatMap((p) =>
     p.variacoes.flatMap((v) => (v.grades ?? []).map((g) => g.tamanho))
   );
-  return [...new Set(tamanhos.filter(Boolean))];
+  return ordenarTamanhos([...new Set(tamanhos.filter(Boolean))]);
 }
 
 export function coresDe(produtos) {
