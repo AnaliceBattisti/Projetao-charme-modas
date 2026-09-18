@@ -21,7 +21,7 @@ Motivo: a parte de pagamento (integração tipo Stripe, ligar checkout ao estoqu
 - Painel administrativo com login, dashboard com indicadores
 - Estrutura das páginas do e-commerce, responsividade, busca/filtros, sacola e favoritos locais
 
-### Fora de escopo por enquanto (fica pra depois, se sobrar tempo)
+### Fora de escopo
 
 - Integração de pagamento online (ex.: Stripe). A loja não processa cartão, Pix nem
   boleto: o pedido é enviado para a loja aprovar e o pagamento é combinado por fora.
@@ -39,14 +39,14 @@ Motivo: a parte de pagamento (integração tipo Stripe, ligar checkout ao estoqu
 
 ## Divisão de responsabilidades proposta pelo grupo
 
-A equipe dividiu o trabalho em quatro frentes (a numeração é só organizacional, não é obrigatoriamente uma pessoa fixa por frente):
+A equipe dividiu o trabalho em quatrop frentes (a numeração é só organizacional, não é obrigatoriamente uma pessoa fixa por frente):
 
 1. **Back-end e banco de dados** — produtos, estoque, fornecedores, clientes, crediário
 2. **Front-end do site de vendas** — catálogo integrado, carrinho e contas implementados; checkout pendente
-3. **Pagamento e integrações** *(em espera, mesma razão)*
 4. **Painel administrativo e crediário** — telas do backoffice, gestão de pagamentos do crediário, bloqueio de cliente inadimplente
+3. ~~**Pagamento e integrações**~~
 
-A priorização inicial concentrou o esforço nas frentes 1 e 4. A estrutura da frente 2 foi retomada em 08/09/2026; pagamentos permanecem para uma etapa posterior.
+A priorização inicial concentrou o esforço nas frentes 1 e 3. A estrutura da frente 2 foi retomada em 08/09/2026; Pagamentos foram removidos do escopo.
 
 ## Telas do painel administrativo
 
@@ -75,8 +75,6 @@ Ver o `README.md` na raiz do repositório pra instruções de como rodar o proje
 - Produtos (CRUD + variações)
 - Fornecedores (CRUD)
 - Estoque (situação + movimentações)
-
-**Backend pronto, front ainda é placeholder:**
 - Clientes
 - Crediário
 

@@ -8,11 +8,13 @@ PostgreSQL, modelado via Prisma. O schema completo (fonte da verdade) está em `
 erDiagram
     FORNECEDOR ||--o{ PRODUTO : fornece
     PRODUTO ||--o{ VARIACAO : possui
-    VARIACAO ||--o{ MOVIMENTACAO_ESTOQUE : movimenta
-    VARIACAO ||--o{ ITEM_COMPRA : "e vendida em"
+    VARIACAO ||--o{ GRADE : possui
+    GRADE ||--o{ MOVIMENTACAO_ESTOQUE : movimenta
+    GRADE ||--o{ ITEM_COMPRA : "e vendida em"
     CLIENTE ||--o| CREDIARIO : possui
     CLIENTE ||--o{ COMPRA : realiza
     CLIENTE ||--o{ ENDERECO_CLIENTE : possui
+    CLIENTE ||--o{ HISTORICO_LIMITE_CREDIARIO : "regista alteracoes"
     CLIENTE |o--o| USUARIO : "tem conta opcional"
     USUARIO ||--o{ SESSAO_USUARIO : possui
     COMPRA ||--o{ ITEM_COMPRA : contem
@@ -24,6 +26,8 @@ erDiagram
         string cnpj
         string localizacao
         string categoria
+        string telefone "opcional"
+        string email "opcional"
     }
     PRODUTO {
         int id PK
@@ -34,11 +38,17 @@ erDiagram
         string categoria
         decimal precoCusto
         decimal precoVenda
+        datetime criadoEm
     }
     VARIACAO {
         int id PK
         int produtoId FK
         string cor
+        string imagemUrl "opcional"
+    }
+    GRADE {
+        int id PK
+        int variacaoId FK
         string tamanho
         string sku "opcional"
         int estoqueMinimo
@@ -46,7 +56,7 @@ erDiagram
     }
     MOVIMENTACAO_ESTOQUE {
         int id PK
-        int variacaoId FK
+        int gradeId FK
         string tipo "ENTRADA / SAIDA / AJUSTE"
         int quantidade
         string motivo
@@ -60,6 +70,8 @@ erDiagram
         enum papel "CLIENTE, ADMIN ou OPERADOR"
         int clienteId FK,UK "opcional"
         datetime criadoEm
+        string senhaResetToken "opcional"
+        datetime senhaResetExpira "opcional"
     }
     SESSAO_USUARIO {
         int id PK
@@ -93,10 +105,20 @@ erDiagram
         int id PK
         int clienteId FK
         decimal limiteCredito
+        decimal limiteDisponivel
         string status "ATIVO / BLOQUEADO"
+    }
+    HISTORICO_LIMITE_CREDIARIO {
+        int id PK
+        int clienteId FK
+        decimal limiteAnterior
+        decimal limiteFinal
+        string motivo
+        datetime data
     }
     COMPRA {
         int id PK
+        string chavePedido UK "opcional"
         int clienteId FK
         datetime data
         decimal valorTotal
@@ -106,7 +128,7 @@ erDiagram
     ITEM_COMPRA {
         int id PK
         int compraId FK
-        int variacaoId FK
+        int gradeId FK
         int quantidade
         decimal precoUnitario
     }
@@ -120,17 +142,19 @@ erDiagram
     }
 ```
 
-`Usuario` guarda as credenciais e tem um vínculo opcional e único com `Cliente`. Contas públicas são criadas com papel `CLIENTE` e vínculo obrigatório pela API; o schema permite clientes sem conta e usuários internos sem cliente. `SessaoUsuario` mantém as sessões de acesso da loja (ver seções abaixo).
+`Usuario` guarda as credenciais e tem um vínculo opcional e único com `Cliente` . Contas públicas são criadas com papel `CLIENTE` e vínculo obrigatório pela API; o schema permite clientes sem conta e utilizadores internos sem cliente . `SessaoUsuario` mantém as sessões de acesso da loja .
 
-- **Fornecedor → Produto**: 1:N. Um produto pertence a um único fornecedor.
-- **Produto → Variação**: 1:N. Cada combinação de cor/tamanho de um produto é uma variação própria, com seu próprio estoque e SKU.
-- **Variação → MovimentacaoEstoque**: 1:N. Toda entrada, saída ou ajuste de estoque fica registrado por variação.
-- **Variação → ItemCompra**: 1:N. Uma variação pode aparecer em vários itens de compra ao longo do tempo.
-- **Cliente → Crediario**: 1:0..1 no banco, com `Crediario.clienteId` único. O cadastro pela API cria um crediário automaticamente; clientes antigos podem continuar sem ele.
-- **Cliente → Compra**: 1:N.
-- **Cliente → EnderecoCliente**: 1:N. Um cliente pode ter zero ou mais endereços de entrega; cada endereço pertence a um único cliente.
-- **Compra → ItemCompra**: 1:N (os itens da compra).
-- **Compra → Parcela**: 1:N, só populado quando a forma de pagamento é crediário.
+*   **Fornecedor → Produto**: 1:N. Um produto pertence a um único fornecedor .
+*   **Produto → Variação**: 1:N. Uma variação por COR do produto, contendo a respetiva imagem .
+*   **Variação → Grade**: 1:N. Um tamanho dentro de uma cor. É a unidade real de stock e de venda.
+*   **Grade → MovimentacaoEstoque**: 1:N. Toda a entrada, saída ou ajuste fica registado por grade (tamanho/cor).
+*   **Grade → ItemCompra**: 1:N. Uma grade pode constar em vários itens de compra.
+*   **Cliente → Crediario**: 1:0..1 na base de dados, com `Crediario.clienteId` único .
+*   **Cliente → HistoricoLimiteCrediarioCliente**: 1:N. Regista o histórico de alterações ao limite de crédito do cliente.
+*   **Cliente → Compra**: 1:N .
+*   **Cliente → EnderecoCliente**: 1:N. Um cliente pode ter zero ou mais moradas de entrega .
+*   **Compra → ItemCompra**: 1:N (os itens da compra) .
+*   **Compra → Parcela**: 1:N, apenas populado quando a forma de pagamento é crediário .
 
 ## Entidades
 
@@ -142,6 +166,8 @@ erDiagram
 | cnpj | String | único |
 | localizacao | String? | |
 | categoria | String? | |
+| telefone | String? | contacto telefónico |
+| email | String? | contacto de e-mail |
 
 ### Produto
 | Campo | Tipo | Observação |
@@ -151,162 +177,160 @@ erDiagram
 | nome | String | |
 | descricao | String? | |
 | marca | String? | |
-| categoria | String? | usado nos filtros do painel (Feminino/Masculino/Infantil/Acessórios) |
+| categoria | String? | usado nos filtros do painel (Feminino/Masculino/Infantil/Acessórios)  |
 | precoCusto | Decimal(10,2) | |
 | precoVenda | Decimal(10,2) | |
-| criadoEm | DateTime | default now(); ordena o catálogo e identifica novidades |
+| criadoEm | DateTime | default now(); ordena o catálogo e identifica novidades  |
 
 ### Variação
+Representa a cor do produto e agrega os tamanhos.
 | Campo | Tipo | Observação |
 |---|---|---|
 | id | Int (PK) | |
 | produtoId | Int (FK) | |
-| cor | String? | |
-| tamanho | String? | |
-| sku | String? | único, **opcional** (nem toda loja física tem SKU pra tudo) |
-| estoqueMinimo | Int | default 0 — **não estava no diagrama original** |
-| estoqueAtual | Int | default 0 — **não estava no diagrama original** |
+| cor | String | agrupa a característica visual |
+| imagemUrl | String? | foto da respetiva variação de cor |
 
-`estoqueMinimo`/`estoqueAtual` foram adicionados porque a tela de Estoque precisa saber a quantidade em tempo real (sem recalcular somando todo o histórico a cada consulta) e o limiar pra disparar o alerta "estoque baixo". `estoqueAtual` é mantido em sincronia com `MovimentacaoEstoque` dentro da mesma transação sempre que uma movimentação é criada (ver [ARQUITETURA.md](./ARQUITETURA.md)).
+### Grade
+Representa o tamanho dentro de uma cor. É a unidade de movimentação.
+| Campo | Tipo | Observação |
+|---|---|---|
+| id | Int (PK) | |
+| variacaoId | Int (FK) | |
+| tamanho | String | |
+| sku | String? | único, opcional |
+| estoqueMinimo | Int | default 0 — usado para o alerta de stock baixo  |
+| estoqueAtual | Int | default 0 — atualizado via transação com MovimentacaoEstoque  |
 
 ### MovimentacaoEstoque
 | Campo | Tipo | Observação |
 |---|---|---|
 | id | Int (PK) | |
-| variacaoId | Int (FK) | |
-| tipo | Enum: `ENTRADA` \| `SAIDA` \| `AJUSTE` | `AJUSTE` **não estava no diagrama original** |
+| gradeId | Int (FK) | antes referia-se a `variacaoId`, agora aponta para a `Grade` |
+| tipo | Enum: `ENTRADA` \| `SAIDA` \| `AJUSTE` |  |
 | quantidade | Int | |
-| motivo | String? | **não estava no diagrama original** (ex.: "Chegada de mercadoria", "Venda #12") |
-| data | DateTime | default now() |
+| motivo | String? | (ex.: "Chegada de mercadoria", "Venda #12")  |
+| data | DateTime | default now()  |
 
 ### Cliente
 
 | Campo | Tipo | Observação |
 |---|---|---|
-| id | Int (PK) | autoincremento |
-| nome | String | obrigatório; a API remove espaços nas extremidades e aceita até 150 caracteres |
-| cpf | String | único; a API valida os dígitos verificadores e salva os 11 dígitos sem máscara |
-| idade | Int? | opcional; a API aceita inteiro de 0 a 130 ou `null` |
-| profissao | String? | opcional; texto livre de até 150 caracteres na API |
-| estadoCivil | String? | opcional; texto livre de até 150 caracteres na API |
-| telefone | String? | opcional; a API salva DDD e número, com 10 ou 11 dígitos, sem máscara nem prefixo `+55` |
-| email | String? | opcional e não único; a API valida o formato, aceita até 254 caracteres e salva em minúsculas |
+| id | Int (PK) | autoincremento  |
+| nome | String | obrigatório  |
+| cpf | String | único  |
+| idade | Int? | opcional  |
+| profissao | String? | opcional  |
+| estadoCivil | String? | opcional  |
+| telefone | String? | opcional  |
+| email | String? | opcional e não único  |
 
-As regras de formato, tamanho e faixa acima são aplicadas pela API. O banco garante os tipos, a nulabilidade, a chave primária e a unicidade de `cpf`. Cadastros antigos com CPF mascarado continuam sendo reconhecidos nas verificações de duplicidade; a migração de e-mail e endereços não reescreve esses CPFs.
-
-As relações no Prisma são `usuario: Usuario?`, `crediario: Crediario?`, `compras: Compra[]` e `enderecos: EnderecoCliente[]`. `POST /clientes` cria cliente, endereços opcionais e crediário em uma única operação atômica. `POST /auth/cadastro` cria o mesmo conjunto junto ao usuário com credenciais. O crediário inicia com status `ATIVO` e os campos `limiteCredito` e `limiteDisponivel` iguais ao valor de `EXPOSICAO_CREDITO_CREDIARIO`, usando zero quando a variável está ausente. Essa criação é feita pela API; a relação opcional no schema permite manter clientes antigos sem crediário.
-
-`PUT /clientes/:id` preserva os campos omitidos e não altera credenciais, compras nem crediário. Na exclusão, a API rejeita conta de usuário vinculada, parcelas em aberto e qualquer compra registrada, mesmo quitada ou cancelada, retornando `409`. Sem esses vínculos, a presença de crediário não impede a exclusão: a API remove esse registro e o cliente na mesma transação, e os endereços são removidos em cascata. A resposta é `204`, inclusive para clientes novos com crediário automático. A remoção do crediário é explícita na API, não uma cascata dessa relação; as chaves estrangeiras continuam protegendo vínculos concorrentes, e uma falha desfaz a transação.
+As relações no Prisma são `usuario: Usuario?`, `crediario: Crediario?`, `compras: Compra[]` e `enderecos: EnderecoCliente[]` . `POST /clientes` cria o cliente, moradas opcionais e o crediário numa única operação atómica . 
 
 ### EnderecoCliente
 
-Endereços de entrega vinculados ao cadastro, adicionados junto com o e-mail para atender ao escopo de clientes.
-
 | Campo | Tipo | Observação |
 |---|---|---|
-| id | Int (PK) | autoincremento |
-| clienteId | Int (FK) | obrigatório; referencia `Cliente.id` e possui índice não único |
-| cep | String | obrigatório; a API aceita máscara e salva 8 dígitos |
-| logradouro | String | obrigatório; até 150 caracteres na API |
-| numero | String | obrigatório; até 20 caracteres na API, permitindo valores como `s/n` |
-| complemento | String? | opcional; até 150 caracteres na API |
-| bairro | String | obrigatório; até 150 caracteres na API |
-| cidade | String | obrigatório; até 150 caracteres na API |
-| estado | String | obrigatório; a API valida a UF brasileira e salva em maiúsculas |
-
-A chave estrangeira usa `ON DELETE CASCADE` e `ON UPDATE CASCADE`. O índice `EnderecoCliente_clienteId_idx` atende às consultas de endereços por cliente. Nas rotas de edição e exclusão, a API confere `id` e `clienteId` juntos, impedindo alterar ou remover o endereço de outro cliente. O corpo da requisição não permite transferir um endereço para outro cadastro.
-
-O cadastro inicial aceita até 20 endereços na mesma requisição; esse limite pertence à validação do `POST /clientes`, não é uma restrição de quantidade total no banco. Endereços também podem ser adicionados individualmente em `/clientes/:id/enderecos`. Veja os contratos em [CLIENTES.md](./CLIENTES.md).
+| id | Int (PK) | autoincremento  |
+| clienteId | Int (FK) | obrigatório  |
+| cep | String | obrigatório  |
+| logradouro | String | obrigatório  |
+| numero | String | obrigatório  |
+| complemento | String? | opcional  |
+| bairro | String | obrigatório  |
+| cidade | String | obrigatório  |
+| estado | String | obrigatório  |
 
 ### Crediario
 | Campo | Tipo | Observação |
 |---|---|---|
 | id | Int (PK) | |
-| clienteId | Int (FK, único) | garante o 1:1 com Cliente |
+| clienteId | Int (FK, único) | garante o 1:1 com Cliente  |
 | limiteCredito | Decimal(10,2) | |
-| status | Enum: `ATIVO` \| `BLOQUEADO` | default `ATIVO` |
+| limiteDisponivel | Decimal(10,2) | saldo restante atual |
+| status | Enum: `ATIVO` \| `BLOQUEADO` | default `ATIVO`  |
+
+### HistoricoLimiteCrediarioCliente
+| Campo | Tipo | Observação |
+|---|---|---|
+| id | Int (PK) | |
+| clienteId | Int (FK) | |
+| limiteAnterior | Decimal(10,2) | limite antes da alteração |
+| limiteFinal | Decimal(10,2) | limite atualizado |
+| motivo | String | razão da alteração do crédito |
+| data | DateTime | default now() |
 
 ### Compra
 | Campo | Tipo | Observação |
 |---|---|---|
 | id | Int (PK) | |
+| chavePedido | String? | único, identifica o pedido na loja |
 | clienteId | Int (FK) | |
-| data | DateTime | default now() |
+| data | DateTime | default now()  |
 | valorTotal | Decimal(10,2) | |
-| formaPagamento | String | texto livre (ex.: "à vista", "cartão", "crediário") |
-| status | Enum: `PENDENTE` \| `CONCLUIDA` \| `CANCELADA` | default `PENDENTE` |
+| formaPagamento | String | texto livre (ex.: "à vista", "cartão", "crediário")  |
+| status | Enum: `SOLICITADA` \| `PENDENTE` \| `CONCLUIDA` \| `CANCELADA` | default `PENDENTE` |
 
 ### ItemCompra
 | Campo | Tipo | Observação |
 |---|---|---|
 | id | Int (PK) | |
 | compraId | Int (FK) | |
-| variacaoId | Int (FK) | |
+| gradeId | Int (FK) | alterado de `variacaoId` para `gradeId` |
 | quantidade | Int | |
-| precoUnitario | Decimal(10,2) | preço no momento da venda (não referencia `Produto.precoVenda` diretamente, pra manter histórico correto mesmo se o preço mudar depois) |
+| precoUnitario | Decimal(10,2) | preço no momento da venda  |
 
 ### Parcela
 | Campo | Tipo | Observação |
 |---|---|---|
 | id | Int (PK) | |
 | compraId | Int (FK) | |
-| numero | Int | número da parcela (1, 2, 3...) |
+| numero | Int | número da parcela (1, 2, 3...)  |
 | valor | Decimal(10,2) | |
 | dataVencimento | DateTime | |
-| status | Enum: `PENDENTE` \| `PAGA` \| `ATRASADA` \| `CANCELADA` | default `PENDENTE`; canceladas não compõem os débitos do cliente |
+| status | Enum: `PENDENTE` \| `PAGA` \| `ATRASADA` \| `CANCELADA` | default `PENDENTE`  |
 
 ### Usuario 
 | Campo | Tipo | Observação |
 |---|---|---|
 | id | Int (PK) | |
 | nome | String | |
-| email | String | único |
-| senhaHash | String | scrypt com salt aleatório; senha original não é armazenada |
-| papel | Enum: `ADMIN` \| `OPERADOR` \| `CLIENTE` | default `CLIENTE`; cadastro público fixa esse papel |
-| clienteId | Int (FK, único) | opcional; referencia `Cliente.id`, com `ON DELETE RESTRICT` |
-| criadoEm | DateTime | default now() |
+| email | String | único  |
+| senhaHash | String | |
+| papel | Enum: `ADMIN` \| `OPERADOR` \| `CLIENTE` | default `CLIENTE`  |
+| clienteId | Int (FK, único) | opcional  |
+| criadoEm | DateTime | default now()  |
+| senhaResetToken | String? | único, token para recuperação |
+| senhaResetExpira | DateTime? | data limite do token de recuperação |
 
-O cadastro e o login da loja usam essa tabela. O usuário recebe as credenciais e é criado junto ao cliente; CPF, contato e relações comerciais ficam em `Cliente`. Nome e e-mail são preenchidos nas duas tabelas inicialmente para manter o contrato administrativo. Alterações de contato pelo painel não alteram o e-mail de acesso. Usuários e clientes antigos são preservados sem vínculo automático. O login administrativo ainda não usa a tabela (ver [ARQUITETURA.md](./ARQUITETURA.md)).
+### SessaoUsuario & RecuperacaoSenha
 
-### SessaoUsuario
+`SessaoUsuario` gere as sessões ativas e revogáveis no servidor através de `tokenHash` e controlo de data de expiração . A tabela `RecuperacaoSenha` mantém um token opcional de recuperação de conta (uma alternativa arquitetural ao preenchimento direto no modelo de `Usuario`) .
 
-| Campo | Tipo | Observação |
-| --- | --- | --- |
-| id | Int (PK) | autoincremento |
-| tokenHash | String (único) | SHA-256 do token aleatório; token original fica somente no cookie |
-| usuarioId | Int (FK, índice) | referencia `Usuario.id`, com `ON DELETE CASCADE` |
-| criadoEm | DateTime | default now() |
-| expiraEm | DateTime (índice) | sete dias após o login |
+## O que mudou recentemente na arquitetura base
 
-A sessão é validada em `/auth/me`, revogada no logout e substituída quando o mesmo navegador faz outro login. O cookie é HttpOnly, SameSite=Lax e Secure em produção. Contratos e regras em [CONTAS.md](./CONTAS.md).
-
-### Recuperação de senha
-
-`RecuperacaoSenha` mantém no máximo um token por usuário: `id`, `usuarioId` único, `tokenHash` único (SHA-256), `criadoEm` e `expiraEm` indexado. A chave estrangeira para `Usuario` usa `ON DELETE CASCADE`. A migração `20260910010000_recuperacao_senha` acrescenta a tabela sem modificar registros existentes. A troca consome o token, atualiza a senha e revoga as sessões atomicamente. Veja [RECUPERACAO_SENHA.md](./RECUPERACAO_SENHA.md).
-
-## O que mudou em relação ao diagrama ER original da equipe
-
-| Mudança | Motivo |
-|---|---|
-| Tabela `Usuario` adicionada | Credenciais de acesso; agora usada nas contas de clientes da loja |
-| `Usuario.clienteId` único e papel `CLIENTE` | Vinculam a conta aos dados comerciais sem converter usuários internos ou clientes antigos |
-| Tabela `SessaoUsuario` adicionada | Mantém sessões revogáveis no servidor, com apenas o hash do token |
-| `Variacao.sku` virou opcional (era obrigatório) | Nem toda variação cadastrada na loja física tem SKU definido ainda |
-| `Variacao.estoqueMinimo` e `estoqueAtual` adicionados | Necessários pro alerta de estoque baixo/esgotado na tela de Estoque |
-| `MovimentacaoEstoque.motivo` adicionado | Descrever a movimentação (chegada de mercadoria, venda, ajuste de inventário) |
-| `TipoMovimentacaoEstoque` ganhou o valor `AJUSTE` | Além de entrada/saída, precisava de um tipo pra correções manuais (perda, inventário) |
-| `Cliente.email` adicionado como opcional | Complementa o contato do cliente previsto no escopo, preservando cadastros existentes |
-| Tabela `EnderecoCliente` adicionada | Permite múltiplos endereços de entrega por cliente, com exclusão em cascata quando o cadastro pode ser removido |
-| Relação `Cliente → Crediario` opcional no schema | Mantém clientes antigos sem crediário; novos cadastros pela API criam o crediário automaticamente |
+*   **Separação em Variação e Grade**: Uma `Variação` passou a representar especificamente a cor (possuindo a `imagemUrl`), e as propriedades de stock e tamanho foram delegadas para a nova entidade `Grade`. O inventário e os itens de compra efetuam as ligações a `Grade`.
+*   **Limites de Crediário e Histórico**: Foi introduzido o campo `limiteDisponivel` no `Crediario` e uma nova tabela `HistoricoLimiteCrediarioCliente` para auditar quem mudou o limite, o valor de origem, destino e o motivo.
+*   **Gestão de Pedidos e Fornecedores**: Adição da `chavePedido` na entidade `Compra` para pedidos da loja e os campos `telefone` e `email` para contacto direto com o `Fornecedor`.
 
 ## Migrations
 
-Histórico em `backend/prisma/migrations/`:
+Histórico principal em `backend/prisma/migrations/`:
 
-1. **`20260814021309_init`** — schema inicial, traduzido direto do diagrama ER da equipe (todas as tabelas originais + `Usuario`).
-2. **`20260825014834_estoque_minimo_atual_motivo`** — adiciona `estoqueMinimo`/`estoqueAtual` em Variação, `motivo` em MovimentacaoEstoque, e o tipo `AJUSTE`.
-3. **`20260825021818_sku_opcional`** — torna `Variacao.sku` opcional.
-4. Para o cadastro de clientes, a migração **`20260907143000_clientes_email_enderecos`** adiciona `Cliente.email` como coluna opcional e cria `EnderecoCliente`, com índice em `clienteId` e chave estrangeira em cascata. Os clientes existentes são preservados, inicialmente com e-mail nulo e sem endereços; essa migração não cria crediários para eles. O cadastro integrado também depende das migrations do módulo de crediário que constam no diretório, incluindo a que adiciona `limiteDisponivel`.
-5. Para contas de clientes, **`20260908200000_papel_cliente`** acrescenta o valor `CLIENTE` ao enum em uma migração separada, antes de usá-lo como padrão. **`20260908200100_usuario_cliente_sessao`** acrescenta o vínculo opcional e único, define o novo papel padrão e cria as sessões. Nenhum cliente ou usuário existente é apagado ou associado automaticamente.
+*   `20260814021309_init` — schema inicial.
+*   `20260825014834_estoque_minimo_atual_motivo` — adiciona campos de stock e motivo.
+*   `20260825021818_sku_opcional` — torna o SKU opcional.
+*   `20260826013422_add_cliente_limite_disponivel` — adiciona limite disponível ao crediário.
+*   `20260829204739_add_historico_limite_credito` — implementa auditoria de limite de crédito.
+*   `20260907143000_clientes_email_enderecos` — adiciona tabela `EnderecoCliente` e `email` em Cliente.
+*   `20260907143604_produto_imagem_fornecedor_contato` — introduz contactos no fornecedor.
+*   `20260907190729_imagem_por_variacao` — migração para gerir `imagemUrl` na Variação.
+*   `20260907205712_produto_criado_em` — marca temporal de criação de produtos.
+*   `20260908200000_papel_cliente` e `20260908200100_usuario_cliente_sessao` — introduzem a gestão de clientes e sessões.
+*   `20260909035847_add_status_parcela_cancelado` — atualiza enumerações de parcelas.
+*   `20260910010000_recuperacao_senha` — tabela de recuperação de palavra-passe.
+*   `20260912010000_pedidos_loja` — suporta processos de pedidos.
+*   `20260913120000_variacao_por_cor_com_grades` — transita estrutura de tamanho/SKU para a entidade Grade.
+*   `20260913140000_normaliza_cnpj_fornecedor` — assegura uniformização no registo de fornecedores.
 
-Para aplicar as migrations existentes: `npx prisma migrate deploy` e `npx prisma generate` (ver `README.md` na raiz). Para alterar o schema, editar `schema.prisma` e rodar `npx prisma migrate dev --name <descricao>` em desenvolvimento.
+Para aplicar as migrações: `npx prisma migrate deploy` e `npx prisma generate` . Para alterar o schema em desenvolvimento, edite `schema.prisma` e execute `npx prisma migrate dev --name <descricao>` .

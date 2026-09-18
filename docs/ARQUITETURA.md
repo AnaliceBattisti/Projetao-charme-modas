@@ -2,7 +2,7 @@
 
 ## Visão geral
 
-O projeto é dividido em duas aplicações independentes que conversam por HTTP, mais um banco de dados compartilhado:
+O projeto é dividido em três aplicações independentes que conversam por HTTP, mais um banco de dados compartilhado:
 
 ```
 ┌─────────────────────┐        HTTP/JSON        ┌──────────────────────┐        ┌────────────┐
@@ -11,15 +11,22 @@ O projeto é dividido em duas aplicações independentes que conversam por HTTP,
 │  localhost:5173       │                          │  + Prisma ORM         │        │ :5432      │
 │                        │                          │  localhost:3333       │        │            │
 └─────────────────────┘                          └──────────────────────┘        └────────────┘
+                                                             ↑  ↓
+┌─────────────────────┐        HTTP/JSON                     |  |
+│  frontend-loja      │  ────────────────────────────────────|  |
+│  React + Vite       │ ◀───────────────────────────────────────  
+│  localhost:5174     │                          
+│                     │                      
+└─────────────────────┘   
 ```
 
-Não existe camada de e-commerce público nem integração de pagamento — o escopo atual é só o **painel administrativo** (backoffice). Veja [ESCOPO.md](./ESCOPO.md) para o porquê dessa decisão.
+Não existe camada de integração de pagamento. Veja [ESCOPO.md](./ESCOPO.md) para o porquê dessa decisão.
 
 ## Backend (`backend/`)
 
 - **Node.js + Express**, JavaScript puro (sem TypeScript), módulos ES (`"type": "module"` no `package.json`).
 - **Prisma** como ORM sobre PostgreSQL — o schema (`prisma/schema.prisma`) é a fonte da verdade do modelo de dados (ver [BANCO_DE_DADOS.md](./BANCO_DE_DADOS.md)).
-- Sem autenticação de verdade na API ainda: as rotas não checam token/sessão. A trava de login que existe hoje é só no front (ver abaixo). Isso é uma lacuna conhecida, não um esquecimento — falta decidir e implementar JWT/sessão antes de expor isso fora da rede local.
+- Autenticação implementada: O login agora conta com rotas reais de validação de credenciais (/login e /admin/login), sessões (iniciarSessao, encerrarSessao), e senhas baseadas em hash. O backend usa cookies de sessão limitados e gerencia tokens de redefinição de senha.
 
 Estrutura:
 
@@ -30,29 +37,42 @@ backend/
 │   └── migrations/          Histórico de migrations (gerado pelo Prisma)
 └── src/
     ├── server.js            Sobe o Express na porta do .env (padrão 3333)
-    ├── app.js                Instancia o Express, cors, json, monta as rotas
-    ├── lib/prisma.js         Client Prisma compartilhado (uma instância só)
-    ├── validation/clientes.js Validação e normalização de clientes, endereços e IDs
+    ├── app.js               Instancia o Express, cors, json, monta as rotas
+    ├── lib/
+    │   ├── prisma.js        Client Prisma compartilhado (uma instância só)
+    │   ├── senhas.js        Geração e verificação de hashes para autenticação
+    │   ├── sessoes.js       Gestão de login e logout
+    │   └── email.js         Configuração e envio de e-mails para recuperação de senha
+    ├── middleware/
+    │   ├── limitarTentativas.js  Rate limit aplicado às rotas de autenticação
+    │   └── exigirConta.js        Garante vínculo de sessão ativa para rotas restritas (/me)
+    ├── services/
+    │   └── pedidos.js       Camada de serviço para envio, listagem e consulta de pedidos
+    ├── validation/
+    │   ├── clientes.js      Validação e normalização de clientes, endereços, IDs e formatos de CPF
+    │   └── auth.js          Validação de regras para login e cadastro
     └── routes/
+        ├── auth.js           Rotas de login, cadastro integrado (usuário+cliente), redefinição de senha e gestão de conta (me)
         ├── fornecedores.js   CRUD completo
         ├── produtos.js       CRUD + variações (cor/tamanho/SKU) + travas de exclusão
         ├── estoque.js        Situação do estoque + registrar entrada/ajuste
-        ├── clientes.js       Cadastro, endereços, histórico e débitos; abertura de crediário
-        ├── crediario.js      CRUD básico (sem tela no front ainda)
-        └── compras.js        Criação de compra + itens (falta baixa de estoque e geração de parcelas — ver TODO no arquivo)
+        ├── clientes.js       Cadastro, endereços, histórico, débitos e exclusão protegida
+        ├── crediario.js      CRUD básico
+        └── compras.js        Criação de compra + itens
 ```
 
 Cada rota segue o mesmo padrão: recebe a requisição, valida o mínimo necessário, chama o Prisma Client e devolve JSON. Não há camada de "service" ou "controller" separada — para o tamanho atual do projeto, rota fina direto no Prisma é suficiente.
 
 ### Regras de negócio já implementadas no backend
 
+- **Autenticação e Cadastro Atômico**: A rota POST /cadastro no módulo auth.js cria o usuário, o cliente, o crediário e os endereços em uma única transação atômica do Prisma. Existe separação rígida entre login de clientes (/login) e administradores (/admin/login), que também exige a role ADMIN.
 - **Baixa/entrada de estoque**: `POST /estoque/movimentacoes` cria o registro de `MovimentacaoEstoque` e atualiza `Variacao.estoqueAtual` **na mesma transação** (`prisma.$transaction`), pra nunca ficar dessincronizado.
 - **Exclusão segura**: não dá pra excluir um `Produto` que ainda tem variações, nem uma `Variacao` que tenha estoque > 0 ou histórico de movimentação/venda. Ver `DELETE /produtos/:id` e `DELETE /produtos/:id/variacoes/:variacaoId`.
 - **Compra**: `POST /compras` cria a compra e os itens numa transação, mas **ainda não** dá baixa automática no estoque nem gera parcelas de crediário — isso está marcado como TODO no próprio arquivo de rota, é o próximo passo de quem for mexer em Compras/Crediário.
 
 ### Módulo de clientes
 
-As rotas ficam em `src/routes/clientes.js`, montadas em `/clientes` pelo `app.js`. O módulo usa o Prisma Client compartilhado e concentra a validação de cadastro, endereços e IDs em `src/validation/clientes.js`. A tela `frontend-admin/src/pages/Clientes.jsx` ainda é um placeholder visual, sem chamadas à API.
+As rotas ficam em `src/routes/clientes.js`, montadas em `/clientes` pelo `app.js`. O módulo usa o Prisma Client compartilhado e concentra a validação de cadastro, endereços e IDs em `src/validation/clientes.js`. A tela `frontend-admin/src/pages/Clientes.jsx` permite cadastrar e listar os clientes salvos.
 
 - **Cadastro integrado**: `POST /clientes` valida nome, CPF e os campos opcionais (idade, profissão, estado civil, telefone e e-mail), e aceita uma lista opcional de endereços de entrega. Cliente, endereços e crediário são criados na mesma operação atômica do Prisma; uma falha impede a gravação do conjunto. O crediário nasce `ATIVO`, com `limiteCredito` e `limiteDisponivel` definidos por `EXPOSICAO_CREDITO_CREDIARIO` (zero quando ausente). A resposta `201` inclui o cadastro, os endereços e o crediário, além do cabeçalho `Location`.
 - **Validação e unicidade**: o CPF tem os dígitos verificadores validados e é salvo sem máscara. A verificação de duplicidade também reconhece CPFs antigos com máscara; a restrição única do banco protege as gravações simultâneas do CPF normalizado. Telefone, e-mail, CEP e UF são normalizados. Campos desconhecidos e operações sobre compras ou crediário enviadas no corpo do cadastro são rejeitados.
@@ -104,7 +124,7 @@ frontend-admin/
 
 ### Autenticação (estado atual, importante)
 
-Não existe login real ainda. `src/auth.js` só guarda uma flag (`cm_logged_in=1`) no `localStorage` do navegador — qualquer um que abra o DevTools e sete essa chave entra sem senha. Isso foi uma decisão consciente pra desbloquear a navegação entre as telas enquanto ninguém tinha implementado autenticação de verdade. Antes de qualquer deploy público, isso precisa virar login real (usuário/senha contra a tabela `Usuario`, com JWT ou sessão, validado no backend).
+Historicamente, src/auth.js guardava apenas uma flag (cm_logged_in=1) no localStorage como medida provisória. O backend agora provê uma infraestrutura completa de autenticação real (auth.js), exigindo a substituição desse placeholder no frontend pela chamada efetiva ao POST /admin/login, gerenciamento do token/cookie real, e tratamento do guard de rota (RequireAuth.jsx) contra as credenciais oficiais da tabela Usuario.
 
 ### Design system
 
