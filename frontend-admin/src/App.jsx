@@ -14,7 +14,7 @@ import ContasReceber from "./pages/ContasReceber.jsx";
 import NovaCompra from "./pages/NovaCompra.jsx";
 import RecuperarSenha from "./pages/RecuperarSenha.jsx";
 import RedefinirSenha from "./pages/RedefinirSenha.jsx";
-import Funcionarios from './pages/Funcionarios.jsx';
+import Funcionarios from "./pages/Funcionarios.jsx";
 
 export default function App() {
   return (
